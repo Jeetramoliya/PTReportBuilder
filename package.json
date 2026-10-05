@@ -1,0 +1,29 @@
+{
+  "name": "pt-report-builder",
+  "version": "1.0.0",
+  "description": "VAPT Evidence Collector & Report Builder - manage pentest projects, findings and evidence, and generate professional PDF reports.",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "docx": "^9.7.2",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.0",
+    "fast-xml-parser": "^5.11.1",
+    "image-size": "^2.0.4",
+    "jpeg-js": "^0.4.4",
+    "multer": "^2.0.0",
+    "nanoid": "^3.3.7",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "pngjs": "^7.0.0",
+    "puppeteer": "^24.15.0"
+  }
+}

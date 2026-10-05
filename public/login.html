@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in — VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+  </div>
+  <div class="container" style="max-width:420px; margin-top:60px;">
+    <div class="card">
+      <h2>Sign in</h2>
+      <div class="helptext">This instance is password-protected. Enter the password to continue.</div>
+      <form id="loginForm">
+        <div class="form-row">
+          <label>Password</label>
+          <input type="password" name="password" required autofocus />
+        </div>
+        <button type="submit" class="btn" style="width:100%;">Sign in</button>
+      </form>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = new FormData(e.target).get('password');
+      try {
+        await API.post('/api/auth/login', { password });
+        window.location.href = '/index.html';
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

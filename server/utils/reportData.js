@@ -1,0 +1,113 @@
+const path = require('path');
+const db = require('../db');
+const { severityRank } = require('./riskMatrix');
+const { resolveTheme, resolvePageBackground } = require('./themes');
+const { getFont } = require('./fonts');
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function nl2br(str) {
+  return escapeHtml(str).replace(/\n/g, '<br/>');
+}
+
+const WORDMARK_SIZES = { small: 16, medium: 22, large: 30, xlarge: 40 };
+
+function sanitizeHex(c) {
+  return /^#[0-9a-fA-F]{3,6}$/.test(String(c || '')) ? c : '';
+}
+
+// Builds the cover company-name wordmark: resolves the typographic controls (bold/italic/
+// underline/size/colour) into an inline style, and renders two-tone "half colour" names
+// as two coloured spans.
+function buildWordmark(project, theme) {
+  const name = project.company_name || project.prepared_by_org || '';
+  const sizePx = WORDMARK_SIZES[project.wordmark_size] || WORDMARK_SIZES.medium;
+  const bold = project.wordmark_bold == null ? true : !!project.wordmark_bold;
+  const italic = !!project.wordmark_italic;
+  const underline = !!project.wordmark_underline;
+  const color1 = sanitizeHex(project.wordmark_color);
+  const color2 = sanitizeHex(project.wordmark_color2);
+
+  const parts = [`font-size:${sizePx}px`, `font-weight:${bold ? '800' : '400'}`];
+  if (italic) parts.push('font-style:italic');
+  parts.push(`text-decoration:${underline ? 'underline' : 'none'}`);
+  if (color1 && !color2) parts.push(`color:${color1}`);
+
+  let html;
+  if (color2 && name) {
+    const n = Number(project.wordmark_split);
+    const split = n > 0 && n < name.length ? n : Math.ceil(name.length / 2);
+    const c1 = color1 || theme.brand;
+    html = `<span style="color:${c1}">${escapeHtml(name.slice(0, split))}</span>`
+      + `<span style="color:${color2}">${escapeHtml(name.slice(split))}</span>`;
+  } else {
+    html = escapeHtml(name);
+  }
+
+  return { hasName: !!name, inlineStyle: parts.join(';'), html };
+}
+
+function buildReportData(projectId) {
+  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  if (!project) return null;
+
+  const scopeItems = db.prepare('SELECT * FROM scope_items WHERE project_id = ? ORDER BY sort_order, rowid').all(projectId);
+
+  const findings = db
+    .prepare('SELECT * FROM findings WHERE project_id = ? ORDER BY sort_order, rowid')
+    .all(projectId)
+    .map((f) => ({
+      ...f,
+      affected_urls: db.prepare('SELECT * FROM affected_urls WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
+      poc_steps: db.prepare('SELECT * FROM poc_steps WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
+      references: db.prepare('SELECT * FROM finding_references WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
+      retest_events: db.prepare('SELECT * FROM retest_events WHERE finding_id = ? ORDER BY event_date, rowid').all(f.id),
+    }));
+
+  const findingsSorted = [...findings].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
+
+  const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0, Info: 0 };
+  for (const f of findings) {
+    if (severityCounts[f.severity] === undefined) severityCounts[f.severity] = 0;
+    severityCounts[f.severity] += 1;
+  }
+
+  const totalAlerts = findings.reduce((sum, f) => sum + Math.max(f.affected_urls.length, 1), 0);
+
+  const owaspCounts = {};
+  for (const f of findings) {
+    if (!f.owasp_category) continue;
+    owaspCounts[f.owasp_category] = (owaspCounts[f.owasp_category] || 0) + 1;
+  }
+
+  const retestEvents = findingsSorted.filter((f) => f.retest_events.length > 0);
+
+  const theme = resolveTheme(project);
+
+  return {
+    project,
+    theme,
+    font: getFont(project.font_family),
+    coverStyle: project.cover_style || 'classic',
+    coverAlignment: project.cover_alignment || 'left',
+    wordmarkStyle: project.wordmark_style || 'underline',
+    wordmark: buildWordmark(project, theme),
+    pageBackground: resolvePageBackground(project.page_background || 'white', theme),
+    headerFooterStyle: project.header_footer_style || 'minimal',
+    scopeItems,
+    findings: findingsSorted,
+    severityCounts,
+    owaspCounts,
+    findingsWithRetests: retestEvents,
+    totalFindings: findings.length,
+    totalAlerts,
+    generatedAt: new Date().toISOString().slice(0, 10),
+    projectRoot: path.join(__dirname, '..', '..'),
+    nl2br,
+    pageNumbers: {},
+  };
+}
+
+module.exports = { buildReportData };

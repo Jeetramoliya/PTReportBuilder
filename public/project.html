@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project — VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+    <a href="/index.html">&larr; All Projects</a>
+  </div>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 id="projectName">Loading…</h1>
+        <div class="subtitle" id="projectMeta"></div>
+      </div>
+      <div class="row">
+        <a class="btn secondary" id="previewBtn" target="_blank">Preview Report</a>
+        <div class="dropdown">
+          <button type="button" class="btn" id="exportMenuBtn">Export &#9662;</button>
+          <div class="dropdown-menu hidden" id="exportMenu">
+            <a id="downloadBtn">Report — PDF</a>
+            <a id="downloadDocxBtn">Report — DOCX</a>
+            <a id="exportCsvBtn">Findings — CSV</a>
+            <a id="exportXlsxBtn">Findings — Excel (.xlsx)</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="design">Design</button>
+      <button class="tab-btn" data-tab="scope">Scope</button>
+      <button class="tab-btn" data-tab="findings">Findings</button>
+      <button class="tab-btn" data-tab="import">Import</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-overview">
+      <div class="card">
+        <h2>Client &amp; Report Details</h2>
+        <form id="overviewForm">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Project Name</label>
+              <input type="text" name="name" />
+            </div>
+            <div class="form-row">
+              <label>Report Title</label>
+              <input type="text" name="report_title" />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Report Subtitle</label>
+              <input type="text" name="report_subtitle" placeholder="e.g. Web Application &amp; Desktop Client Tool" />
+            </div>
+            <div class="form-row">
+              <label>Iteration / Report ID</label>
+              <input type="text" name="iteration_label" placeholder="e.g. PI-2025-Q3_3" />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Client Name</label>
+              <input type="text" name="client_name" />
+            </div>
+            <div class="form-row">
+              <label>Client Website</label>
+              <input type="text" name="client_website" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Client Address</label>
+            <textarea name="client_address"></textarea>
+          </div>
+          <div class="form-row">
+            <label>Company Name (cover wordmark)</label>
+            <input type="text" name="company_name" placeholder="Shown on the cover when no logo is uploaded" />
+            <div class="helptext">If you don't have a logo image, enter your company name here — it appears as a styled wordmark on the cover page, coloured by your chosen theme.</div>
+          </div>
+          <div class="form-grid cols-3">
+            <div class="form-row">
+              <label>Assessment Date</label>
+              <input type="date" name="assessment_date" />
+            </div>
+            <div class="form-row">
+              <label>Finding ID Prefix</label>
+              <input type="text" name="finding_prefix" />
+            </div>
+            <div class="form-row">
+              <label>Status</label>
+              <input type="text" name="tagline" placeholder="Confidential &amp; Proprietary" />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Tester Name</label>
+              <input type="text" name="tester_name" />
+            </div>
+            <div class="form-row">
+              <label>Prepared By (Org)</label>
+              <input type="text" name="prepared_by_org" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Executive Summary Intro</label>
+            <textarea name="executive_summary"></textarea>
+          </div>
+          <div class="form-row">
+            <label>Methodology (lines starting with "- " become bullets)</label>
+            <textarea name="methodology" style="min-height:140px;"></textarea>
+          </div>
+          <button type="submit" class="btn">Save Details</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Cover Branding</h2>
+        <div class="helptext">Use <strong>either</strong> a company logo <strong>or</strong> a company name on the cover — setting one clears the other.</div>
+
+        <div id="brandingLogoState" class="hidden" style="margin-top:12px;">
+          <div class="row" style="align-items:flex-start;">
+            <img id="logoPreview" class="logo-preview hidden" />
+            <div>
+              <div class="row">
+                <button type="button" class="btn small secondary" id="logoColorBtn">Use Logo Color as Theme</button>
+                <button type="button" class="btn small danger" id="removeLogoBtn">Remove Logo</button>
+              </div>
+              <div class="helptext">"Use Logo Color" extracts the dominant accent color from your logo (PNG/JPEG) into a custom theme.</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="brandingUploadState" style="margin-top:12px;">
+          <label style="display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.02em;">Upload a Logo</label>
+          <input type="file" id="logoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+          <div class="helptext">PNG, JPG, SVG or WEBP, max 5MB. Uploading a logo clears any company name below.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="color:var(--high);">Danger Zone</h2>
+        <button class="btn danger" id="deleteProjectBtn">Delete Project</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-design">
+      <div class="card">
+        <div class="design-layout">
+          <div class="design-controls">
+            <h2>Color Theme</h2>
+            <div class="helptext">Sets the accent color used for headings, table headers and the cover page across the whole report.</div>
+            <div id="themeGrid" class="swatch-grid"></div>
+
+            <h2 style="margin-top:26px;">Cover Page Style</h2>
+            <div class="helptext">Choose how the first page of the PDF/DOCX report looks.</div>
+            <div id="coverStyleGrid" class="cover-style-grid"></div>
+
+            <h2 style="margin-top:26px;">Cover Content Alignment</h2>
+            <div class="helptext">Horizontal alignment of the title, logo and client details on the cover page.</div>
+            <div id="coverAlignGrid" class="swatch-grid"></div>
+
+            <h2 style="margin-top:26px;">Company Name Styling</h2>
+            <div class="helptext">Applies to the company-name wordmark on the cover (used when no logo is set).</div>
+            <div id="wordmarkPreview" class="wm-preview">Company Name</div>
+
+            <label style="display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin:14px 0 5px; text-transform:uppercase; letter-spacing:0.02em;">Container Style</label>
+            <div id="wordmarkStyleGrid" class="cover-style-grid"></div>
+
+            <div class="wm-controls">
+              <div class="wm-toggles">
+                <button type="button" class="wm-toggle" data-wm="wordmark_bold" title="Bold" style="font-weight:800;">B</button>
+                <button type="button" class="wm-toggle" data-wm="wordmark_italic" title="Italic" style="font-style:italic;">I</button>
+                <button type="button" class="wm-toggle" data-wm="wordmark_underline" title="Underline" style="text-decoration:underline;">U</button>
+              </div>
+              <div class="wm-field">
+                <label>Size</label>
+                <select id="wmSize">
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                  <option value="xlarge">Extra Large</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="wm-controls">
+              <div class="wm-field">
+                <label>Text Color</label>
+                <div class="row">
+                  <input type="color" id="wmColor" value="#0f4c81" />
+                  <button type="button" class="btn small secondary" id="wmColorClear">Use Theme</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wm-field" style="margin-top:12px;">
+              <label><input type="checkbox" id="wmTwoTone" style="vertical-align:middle;" /> Two-tone (half colors)</label>
+            </div>
+            <div id="wmTwoToneControls" class="wm-controls hidden">
+              <div class="wm-field">
+                <label>Second Color</label>
+                <input type="color" id="wmColor2" value="#2563eb" />
+              </div>
+              <div class="wm-field">
+                <label>Split after (characters)</label>
+                <input type="number" id="wmSplit" min="0" step="1" style="width:90px;" />
+                <div class="helptext" style="margin-top:4px;">0 = split at the middle.</div>
+              </div>
+            </div>
+
+            <h2 style="margin-top:26px;">Font</h2>
+            <div class="helptext">Sets the typeface used throughout the report.</div>
+            <div id="fontGrid" class="swatch-grid"></div>
+
+            <h2 style="margin-top:26px;">Page Background</h2>
+            <div class="helptext">Background color for the content pages (the cover page keeps its own design).</div>
+            <div id="pageBgGrid" class="swatch-grid"></div>
+
+            <h2 style="margin-top:26px;">Header &amp; Footer Style</h2>
+            <div class="helptext">Color treatment for the running header/footer bar on every PDF page.</div>
+            <div id="headerFooterGrid" class="cover-style-grid"></div>
+          </div>
+          <div class="design-preview">
+            <div class="preview-label">Live Preview — Cover Page</div>
+            <div class="cover-preview-frame">
+              <iframe id="coverPreviewFrame" width="900" height="1250"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <hr class="section-divider" />
+        <h2>Draft Watermark</h2>
+        <div class="helptext">When set, this text is stamped diagonally across every page of the PDF (e.g. "DRAFT" or "CONFIDENTIAL"). Leave blank for none.</div>
+        <form id="watermarkForm" class="row">
+          <input type="text" name="watermark_text" placeholder="e.g. DRAFT" style="flex:1; max-width:300px; border:1px solid var(--line); border-radius:6px; padding:8px 10px;" />
+          <button type="submit" class="btn secondary">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-scope">
+      <div class="card">
+        <h2>Assessment Scope</h2>
+        <div class="helptext">Targets, endpoints and applications covered by this engagement, organized into groups (e.g. "Web API Endpoints", "Desktop Client Tool") — shown in the report's Assessment Scope section.</div>
+        <div id="scopeList"></div>
+        <hr class="section-divider" />
+        <h3 style="margin-top:0;">Add Scope Item</h3>
+        <form id="scopeForm">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Group / Section Name</label>
+              <input type="text" name="group_name" placeholder="e.g. Client-Side Application Web API Endpoints" value="Scope" />
+            </div>
+            <div class="form-row">
+              <label>Type</label>
+              <select name="item_type" id="scopeItemType">
+                <option value="url">URL / Endpoint</option>
+                <option value="app">Application / Software</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid" id="scopeUrlFields">
+            <div class="form-row">
+              <label>Tenant</label>
+              <input type="text" name="tenant" placeholder="ALL" value="ALL" />
+            </div>
+            <div class="form-row">
+              <label>URL</label>
+              <input type="text" name="url" placeholder="https://example.com" />
+            </div>
+          </div>
+          <div class="form-grid cols-3 hidden" id="scopeAppFields">
+            <div class="form-row">
+              <label>Application Name</label>
+              <input type="text" name="app_name" placeholder="e.g. Casepoint Desktop Client" />
+            </div>
+            <div class="form-row">
+              <label>Version</label>
+              <input type="text" name="app_version" placeholder="e.g. 7.3.0" />
+            </div>
+            <div class="form-row">
+              <label>Platform</label>
+              <input type="text" name="platform" placeholder="e.g. Windows" />
+            </div>
+          </div>
+          <button type="submit" class="btn">Add</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-findings">
+      <div class="card">
+        <div class="row between" style="margin-bottom:10px;">
+          <h2 style="margin:0;">Findings</h2>
+          <button class="btn" id="newFindingBtn">+ Add Finding</button>
+        </div>
+        <table id="findingsTable">
+          <thead>
+            <tr><th>ID</th><th>Title</th><th>Category</th><th>Risk</th><th>CVSS</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="findingsBody"></tbody>
+        </table>
+        <div id="findingsEmpty" class="empty-state hidden">No findings yet. Add your first finding.</div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-import">
+      <div class="card">
+        <h2>Import from Scanner</h2>
+        <div class="helptext">Upload a Burp Suite XML export, a Nessus (.nessus) export, or a Nuclei JSON Lines output. Parsed findings are shown below for review before anything is created.</div>
+        <form id="importUploadForm" class="row">
+          <input type="file" id="importFileInput" name="file" accept=".xml,.nessus,.json,.jsonl,.txt" required />
+          <button type="submit" class="btn">Parse File</button>
+        </form>
+        <div id="importPreviewArea" class="hidden">
+          <hr class="section-divider" />
+          <div class="row between" style="margin-bottom:10px;">
+            <div id="importSummary" class="helptext" style="margin:0;"></div>
+            <div class="row">
+              <button type="button" class="btn small secondary" id="importSelectAllBtn">Select All</button>
+              <button type="button" class="btn small" id="importCommitBtn">Import Selected</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th style="width:30px;"></th><th>Title</th><th>Severity</th><th>URL</th><th>Source</th></tr></thead>
+            <tbody id="importPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="newFindingModal">
+    <div class="modal">
+      <h2>Add Finding</h2>
+      <form id="newFindingForm">
+        <div class="form-row">
+          <label>Start from Template (optional)</label>
+          <select id="templateSelect">
+            <option value="">— Blank finding —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Title *</label>
+          <input type="text" name="title" required placeholder="e.g. Stored Cross-Site Scripting" />
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Category</label>
+            <input type="text" name="category" placeholder="e.g. Cross-Site Scripting" />
+          </div>
+          <div class="form-row">
+            <label>Scope</label>
+            <input type="text" name="scope_type" placeholder="e.g. Web Application" value="Web Application" />
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Likelihood</label>
+            <select name="likelihood"><option>High</option><option selected>Medium</option><option>Low</option></select>
+          </div>
+          <div class="form-row">
+            <label>Impact</label>
+            <select name="impact"><option>High</option><option selected>Medium</option><option>Low</option></select>
+          </div>
+        </div>
+        <input type="hidden" name="owasp_category" />
+        <input type="hidden" name="cwe_id" />
+        <input type="hidden" name="cvss_vector" />
+        <input type="hidden" name="description" />
+        <input type="hidden" name="remediation" />
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="cancelNewFinding">Cancel</button>
+          <button type="submit" class="btn">Create &amp; Edit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/project.js"></script>
+</body>
+</html>

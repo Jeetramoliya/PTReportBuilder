@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finding — VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+    <a id="backLink" href="/project.html">&larr; Back to Project</a>
+  </div>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 id="findingTitle">Loading…</h1>
+        <div class="subtitle" id="findingMeta"></div>
+      </div>
+      <button class="btn danger" id="deleteFindingBtn">Delete Finding</button>
+    </div>
+
+    <div class="card">
+      <h2>Finding Details</h2>
+      <form id="findingForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Identifier</label>
+            <input type="text" name="identifier" />
+          </div>
+          <div class="form-row">
+            <label>Title *</label>
+            <input type="text" name="title" required />
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Category / Vulnerability Type</label>
+            <input type="text" name="category" placeholder="e.g. Cross-Site Scripting" />
+          </div>
+          <div class="form-row">
+            <label>Scope</label>
+            <input type="text" name="scope_type" placeholder="e.g. Web Application, API, Desktop Client" />
+          </div>
+        </div>
+        <div class="form-grid cols-3">
+          <div class="form-row">
+            <label>Likelihood</label>
+            <select name="likelihood"><option>High</option><option>Medium</option><option>Low</option></select>
+          </div>
+          <div class="form-row">
+            <label>Impact</label>
+            <select name="impact"><option>High</option><option>Medium</option><option>Low</option></select>
+          </div>
+          <div class="form-row">
+            <label>Status</label>
+            <select name="status"><option>Open</option><option>Retest Pending</option><option>Fixed</option><option>Accepted Risk</option></select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>OWASP Top 10 (2021) Category</label>
+            <select name="owasp_category" id="owaspSelect"><option value="">— None —</option></select>
+          </div>
+          <div class="form-row">
+            <label>CWE ID</label>
+            <input type="text" name="cwe_id" placeholder="e.g. CWE-79" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <textarea name="description" style="min-height:90px;" placeholder="What is the vulnerability and why does it matter?"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Suggested Remediation</label>
+          <textarea name="remediation" style="min-height:90px;" placeholder="How should the client fix this?"></textarea>
+        </div>
+        <button type="submit" class="btn">Save Finding</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>CVSS v3.1 Score</h2>
+      <div class="helptext">Optional — if set, the CVSS-derived severity overrides the Likelihood/Impact risk rating on the report.</div>
+      <div class="form-grid cols-3" id="cvssSelects">
+        <div class="form-row">
+          <label>Attack Vector (AV)</label>
+          <select data-metric="AV">
+            <option value="N">Network</option><option value="A">Adjacent</option><option value="L">Local</option><option value="P">Physical</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Attack Complexity (AC)</label>
+          <select data-metric="AC"><option value="L">Low</option><option value="H">High</option></select>
+        </div>
+        <div class="form-row">
+          <label>Privileges Required (PR)</label>
+          <select data-metric="PR"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select>
+        </div>
+        <div class="form-row">
+          <label>User Interaction (UI)</label>
+          <select data-metric="UI"><option value="N">None</option><option value="R">Required</option></select>
+        </div>
+        <div class="form-row">
+          <label>Scope (S)</label>
+          <select data-metric="S"><option value="U">Unchanged</option><option value="C">Changed</option></select>
+        </div>
+        <div class="form-row">
+          <label>Confidentiality (C)</label>
+          <select data-metric="C"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select>
+        </div>
+        <div class="form-row">
+          <label>Integrity (I)</label>
+          <select data-metric="I"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select>
+        </div>
+        <div class="form-row">
+          <label>Availability (A)</label>
+          <select data-metric="A"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select>
+        </div>
+      </div>
+      <div class="cvss-score-display">
+        <div class="score" id="cvssScoreValue">0.0</div>
+        <span class="badge" id="cvssSeverityBadge">None</span>
+        <span class="code" id="cvssVectorText" style="font-family:Consolas,monospace; font-size:11px; color:var(--muted);"></span>
+        <button type="button" class="btn small secondary" id="clearCvssBtn" style="margin-left:auto;">Clear (use Likelihood/Impact only)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Vulnerable Endpoint(s)</h2>
+      <div id="urlList"></div>
+      <form id="urlForm" class="row" style="margin-top:10px;">
+        <input type="text" name="url" placeholder="https://target.example.com/vulnerable-endpoint" style="flex:1; border:1px solid var(--line); border-radius:6px; padding:8px 10px;" required />
+        <button type="submit" class="btn">Add</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Proof of Concept / Reproduction Steps</h2>
+      <div class="helptext">Add numbered steps with an optional payload/code snippet and screenshot for each — these become the evidence section of the report.</div>
+      <div id="pocList"></div>
+      <form id="pocForm" style="margin-top:10px; border-top:1px solid var(--line); padding-top:14px;">
+        <div class="form-row">
+          <label>Step Description</label>
+          <textarea name="step_text" placeholder="e.g. Navigate to the login page and intercept the request with Burp Suite."></textarea>
+        </div>
+        <div class="form-row">
+          <label>Payload / Code Snippet (optional)</label>
+          <textarea name="payload" placeholder="e.g. &lt;img src=x onerror=alert(document.cookie)&gt;" style="font-family:Consolas,monospace; font-size:12px;"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Screenshot (optional)</label>
+          <input type="file" name="screenshot" accept="image/png,image/jpeg,image/webp,image/gif" />
+        </div>
+        <button type="submit" class="btn">Add Step</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>References</h2>
+      <div id="refList"></div>
+      <form id="refForm" class="row" style="margin-top:10px;">
+        <input type="text" name="label" placeholder="Label (e.g. OWASP XSS)" style="width:200px; border:1px solid var(--line); border-radius:6px; padding:8px 10px;" />
+        <input type="text" name="url" placeholder="https://owasp.org/..." style="flex:1; border:1px solid var(--line); border-radius:6px; padding:8px 10px;" required />
+        <button type="submit" class="btn">Add</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Retest Tracking</h2>
+      <div class="helptext">Log a retest to update the status and keep a history — this shows up in the report's Retest Summary section.</div>
+      <div id="retestList"></div>
+      <form id="retestForm" style="margin-top:10px; border-top:1px solid var(--line); padding-top:14px;">
+        <div class="form-grid cols-3">
+          <div class="form-row">
+            <label>New Status</label>
+            <select name="new_status"><option>Open</option><option>Retest Pending</option><option>Fixed</option><option>Accepted Risk</option></select>
+          </div>
+          <div class="form-row">
+            <label>Date</label>
+            <input type="date" name="event_date" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <textarea name="notes" placeholder="e.g. Verified fix deployed to production, payload no longer executes."></textarea>
+        </div>
+        <button type="submit" class="btn">Log Retest</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/finding.js"></script>
+</body>
+</html>

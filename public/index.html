@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+    <a href="#" id="securityLink">&#128274; Security</a>
+  </div>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1>Projects</h1>
+        <div class="subtitle">Manage pentest engagements, findings, and generate client-ready PDF reports.</div>
+      </div>
+      <button class="btn" id="newProjectBtn">+ New Project</button>
+    </div>
+
+    <div id="projectsGrid" class="grid"></div>
+    <div id="emptyState" class="empty-state hidden">
+      <p>No projects yet. Create your first pentest project to get started.</p>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="newProjectModal">
+    <div class="modal">
+      <h2>New Project</h2>
+      <form id="newProjectForm">
+        <div class="form-row">
+          <label>Project Name *</label>
+          <input type="text" name="name" required placeholder="e.g. UserLove Web Application" />
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Client Name</label>
+            <input type="text" name="client_name" placeholder="e.g. Casepoint" />
+          </div>
+          <div class="form-row">
+            <label>Client Website</label>
+            <input type="text" name="client_website" placeholder="casepoint.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Client Address</label>
+          <textarea name="client_address" placeholder="7900 Tysons One Place, Suite 225, Tysons, VA 22102"></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Assessment Date</label>
+            <input type="date" name="assessment_date" />
+          </div>
+          <div class="form-row">
+            <label>Finding ID Prefix</label>
+            <input type="text" name="finding_prefix" placeholder="WEB" />
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Tester Name</label>
+            <input type="text" name="tester_name" placeholder="Security Team" />
+          </div>
+          <div class="form-row">
+            <label>Prepared By (Org)</label>
+            <input type="text" name="prepared_by_org" placeholder="Your Security Firm" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="cancelNewProject">Cancel</button>
+          <button type="submit" class="btn">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="securityModal">
+    <div class="modal">
+      <h2>Security</h2>
+      <div id="securityDisabledView">
+        <div class="helptext">This app currently has no password protection — anyone with access to this machine (or network, if exposed) can open it. Set a password to require sign-in.</div>
+        <form id="enableAuthForm">
+          <div class="form-row">
+            <label>New Password</label>
+            <input type="password" name="password" required minlength="4" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" id="cancelSecurity">Close</button>
+            <button type="submit" class="btn">Enable Password Protection</button>
+          </div>
+        </form>
+      </div>
+      <div id="securityEnabledView" class="hidden">
+        <div class="helptext">Password protection is enabled. Changing or disabling it requires your current password.</div>
+        <form id="changeAuthForm">
+          <div class="form-row">
+            <label>Current Password</label>
+            <input type="password" name="current_password" required />
+          </div>
+          <div class="form-row">
+            <label>New Password</label>
+            <input type="password" name="new_password" required minlength="4" />
+          </div>
+          <div class="row" style="justify-content:flex-end; gap:8px;">
+            <button type="submit" class="btn secondary">Change Password</button>
+          </div>
+        </form>
+        <hr class="section-divider" />
+        <form id="disableAuthForm">
+          <div class="form-row">
+            <label>Current Password</label>
+            <input type="password" name="current_password" required />
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" id="cancelSecurity2">Close</button>
+            <button type="submit" class="btn danger">Disable Password Protection</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

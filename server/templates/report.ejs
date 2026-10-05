@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title><%= project.report_title %></title>
+<style>
+  :root {
+    --color-critical: #7f1d1d;
+    --color-high: #b91c1c;
+    --color-medium: #d97706;
+    --color-low: #2563eb;
+    --color-info: #6b7280;
+    --color-ink: #1f2933;
+    --color-muted: #5b6773;
+    --color-brand: <%= theme.brand %>;
+    --color-brand-dark: <%= theme.brandDark %>;
+    --color-brand-light: <%= theme.brandLight %>;
+    --color-accent: <%= theme.accent %>;
+    --color-line: #d7dde3;
+    --page-bg: <%= pageBackground %>;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: <%- font.stack %>;
+    color: var(--color-ink);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0;
+    background: var(--page-bg);
+  }
+  .watermark {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    text-align: center;
+    font-weight: 700;
+    color: rgba(180, 30, 30, 0.16);
+    transform: translateX(-50%) rotate(-32deg);
+    transform-origin: center;
+    z-index: 999;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .page {
+    padding: 36px 48px;
+    page-break-after: always;
+    min-height: 90vh;
+  }
+  .page:last-child { page-break-after: auto; }
+  h1, h2, h3 { color: var(--color-brand); margin: 0 0 12px; }
+  h1 { font-size: 26px; }
+  h2 { font-size: 19px; border-bottom: 2px solid var(--color-brand); padding-bottom: 6px; margin-top: 0; }
+  h3 { font-size: 15px; }
+  p { margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
+  th, td { border: 1px solid var(--color-line); padding: 6px 8px; text-align: left; vertical-align: top; font-size: 11.5px; }
+  th { background: var(--color-brand-light); color: var(--color-brand); }
+  ul, ol { margin: 6px 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  .muted { color: var(--color-muted); }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .badge-critical { background: var(--color-critical); }
+  .badge-high { background: var(--color-high); }
+  .badge-medium { background: var(--color-medium); }
+  .badge-low { background: var(--color-low); }
+  .badge-info, .badge-none { background: var(--color-info); }
+
+  /* Cover page */
+  .cover { display: flex; flex-direction: column; justify-content: space-between; height: 100vh; padding: 60px; position: relative; overflow: hidden; background: #ffffff; }
+  .cover-logo { max-height: 90px; max-width: 320px; object-fit: contain; margin-bottom: 40px; position: relative; z-index: 1; }
+  .cover-wordmark {
+    display: inline-block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: var(--color-brand);
+    margin-bottom: 40px;
+  }
+  /* Wordmark styles */
+  .cover-wordmark.wm-underline { padding-bottom: 8px; border-bottom: 3px solid var(--color-brand); }
+  .cover-wordmark.wm-plain { /* just bold text */ }
+  .cover-wordmark.wm-boxed { border: 2px solid var(--color-brand); border-radius: 6px; padding: 8px 16px; }
+  .cover-wordmark.wm-badge {
+    background: var(--color-brand); color: #fff; padding: 8px 18px; border-radius: 6px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cover-wordmark.wm-spaced { text-transform: uppercase; letter-spacing: 0.28em; font-weight: 700; }
+  .cover-title { font-size: 32px; color: var(--color-brand); margin-bottom: 6px; }
+  .cover-subtitle { font-size: 16px; color: var(--color-muted); margin-bottom: 40px; }
+  .cover-meta { font-size: 13px; color: var(--color-ink); }
+  .cover-client-box { border-top: 3px solid var(--color-brand); padding-top: 16px; margin-top: 30px; }
+  .cover-footer { font-size: 11px; color: var(--color-muted); }
+  .cover > * { position: relative; z-index: 1; }
+
+  /* Cover style: gradient */
+  .cover.style-gradient { background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-dark) 100%); }
+  .cover.style-gradient .cover-title,
+  .cover.style-gradient .cover-meta,
+  .cover.style-gradient .cover-footer { color: #fff; }
+  .cover.style-gradient .cover-subtitle { color: rgba(255,255,255,0.82); }
+  .cover.style-gradient .cover-footer { color: rgba(255,255,255,0.72); }
+  .cover.style-gradient .cover-client-box { border-top-color: rgba(255,255,255,0.5); }
+  .cover.style-gradient .cover-iteration { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.6); color: #fff; }
+  .cover.style-gradient .cover-logo { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); }
+  .cover.style-gradient .cover-wordmark { color: #fff; border-color: rgba(255,255,255,0.8); }
+  .cover.style-gradient .cover-wordmark.wm-badge { background: rgba(255,255,255,0.16); color: #fff; }
+
+  /* Cover style: dark */
+  .cover.style-dark { background: var(--color-brand-dark); }
+  .cover.style-dark .cover-title,
+  .cover.style-dark .cover-meta,
+  .cover.style-dark .cover-footer { color: #fff; }
+  .cover.style-dark .cover-subtitle { color: rgba(255,255,255,0.75); }
+  .cover.style-dark .cover-client-box { border-top-color: rgba(255,255,255,0.35); }
+  .cover.style-dark .cover-iteration { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.5); color: #fff; }
+  .cover.style-dark .cover-logo { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
+  .cover.style-dark .cover-wordmark { color: #fff; border-color: rgba(255,255,255,0.6); }
+  .cover.style-dark .cover-wordmark.wm-badge { background: rgba(255,255,255,0.14); color: #fff; }
+
+  /* Cover style: geometric */
+  .cover.style-geometric::before {
+    content: '';
+    position: absolute; top: -90px; right: -90px;
+    width: 320px; height: 320px; border-radius: 50%;
+    background: var(--color-brand-light);
+    z-index: 0;
+  }
+  .cover.style-geometric::after {
+    content: '';
+    position: absolute; bottom: -130px; right: 70px;
+    width: 240px; height: 240px; border-radius: 30%;
+    background: var(--color-brand);
+    opacity: 0.12;
+    transform: rotate(20deg);
+    z-index: 0;
+  }
+
+  /* Cover style: band */
+  .cover.style-band { padding: 0; }
+  .cover-band-top { background: var(--color-brand); color: #fff; padding: 70px 60px 46px; position: relative; z-index: 1; }
+  .cover-band-top .cover-title, .cover-band-top .cover-meta { color: #fff; }
+  .cover-band-top .cover-wordmark { color: #fff; border-color: rgba(255,255,255,0.7); }
+  .cover-band-top .cover-wordmark.wm-badge { background: rgba(255,255,255,0.16); color: #fff; }
+  .cover-band-top .cover-subtitle { color: rgba(255,255,255,0.85); }
+  .cover-band-top .cover-iteration { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.6); color: #fff; }
+  .cover-band-top .cover-logo { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); }
+  .cover-band-bottom { padding: 40px 60px; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; position: relative; z-index: 1; }
+
+  /* Cover style: split */
+  .cover.style-split::before {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: 0; top: 0;
+    background: linear-gradient(to top right, var(--color-brand) 0%, var(--color-brand) 36%, transparent 36.5%);
+    z-index: 0;
+  }
+  .cover.style-split .cover-client-box { border-top: none; margin-top: 0; }
+  .cover.style-split .cover-client-box .cover-meta { color: #fff; }
+  .cover.style-split .cover-footer { color: rgba(255,255,255,0.8); }
+
+  /* Cover style: frame */
+  .cover.style-frame { border: 14px solid var(--color-brand); }
+  .cover.style-frame::before {
+    content: '';
+    position: absolute; top: 26px; left: 26px; right: 26px; bottom: 26px;
+    border: 1px solid var(--color-brand);
+    z-index: 0;
+  }
+
+  /* Cover style: stripe */
+  .cover.style-stripe { padding-left: 96px; }
+  .cover.style-stripe::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 36px;
+    background: var(--color-brand);
+    z-index: 0;
+  }
+
+  /* Cover style: hex (hexagon grid accent) */
+  .cover.style-hex::before {
+    content: '';
+    position: absolute; top: 0; right: 0; bottom: 0; width: 280px;
+    color: var(--color-brand);
+    opacity: 0.22;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 0L56 16V50L28 66L0 50V16Z' fill='none' stroke='currentColor' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    z-index: 0;
+  }
+
+  /* Cover style: dots (dot grid accent) */
+  .cover.style-dots::before {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: 0; height: 46%;
+    background-image: radial-gradient(var(--color-brand) 1.6px, transparent 1.6px);
+    background-size: 16px 16px;
+    opacity: 0.28;
+    z-index: 0;
+  }
+
+  /* Cover style: blueprint (fine technical grid) */
+  .cover.style-blueprint::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      repeating-linear-gradient(0deg, var(--color-brand) 0, var(--color-brand) 1px, transparent 1px, transparent 24px),
+      repeating-linear-gradient(90deg, var(--color-brand) 0, var(--color-brand) 1px, transparent 1px, transparent 24px);
+    opacity: 0.08;
+    z-index: 0;
+  }
+  .cover.style-blueprint::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    border: 6px solid var(--color-brand);
+    opacity: 0.15;
+    margin: 20px;
+    z-index: 0;
+  }
+
+  /* Cover alignment */
+  .cover.align-center > div:first-child,
+  .cover-band-top.align-center { text-align: center; }
+  .cover.align-center .cover-client-box { text-align: center; }
+
+  .cover.align-right > div:first-child,
+  .cover-band-top.align-right { text-align: right; }
+  .cover.align-right .cover-client-box { text-align: right; }
+
+  .toc-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dotted var(--color-line); font-size: 13px; }
+  .toc-item a { color: inherit; text-decoration: none; }
+  .toc-sub { padding-left: 20px; font-size: 12px; color: var(--color-muted); }
+
+  .info-table td:first-child { width: 16%; font-weight: 600; background: #f7f9fb; }
+
+  .finding-header {
+    background: var(--color-brand-light);
+    padding: 10px 14px;
+    border-left: 6px solid var(--color-brand);
+    margin-bottom: 12px;
+  }
+  .finding-header.sev-critical { border-color: var(--color-critical); }
+  .finding-header.sev-high { border-color: var(--color-high); }
+  .finding-header.sev-medium { border-color: var(--color-medium); }
+  .finding-header.sev-low { border-color: var(--color-low); }
+  .finding-header h3 { margin: 0; color: var(--color-ink); }
+
+  .poc-step { margin-bottom: 16px; }
+  .poc-step img {
+    max-width: 100%;
+    max-height: 340px;
+    border: 1px solid var(--color-line);
+    border-radius: 4px;
+    margin-top: 6px;
+    display: block;
+  }
+
+  .chart-row { display: flex; align-items: center; margin-bottom: 6px; }
+  .chart-label { width: 70px; font-size: 12px; text-align: right; padding-right: 10px; font-weight: 600; }
+  .chart-bar-track { flex: 1; background: #eef1f4; border-radius: 3px; overflow: hidden; height: 20px; }
+  .chart-bar-fill { height: 100%; border-radius: 3px; }
+  .chart-count { width: 30px; padding-left: 8px; font-size: 12px; }
+
+  .matrix-table td, .matrix-table th { text-align: center; }
+  .matrix-high { background: #fde2e1; }
+  .matrix-medium { background: #fdf0d5; }
+  .matrix-low { background: #e1ecfb; }
+
+  code, .code { font-family: Consolas, 'Courier New', monospace; background: #f2f4f6; padding: 1px 5px; border-radius: 3px; font-size: 11px; word-break: break-all; }
+
+  .cover-iteration {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-brand);
+    background: var(--color-brand-light);
+    border: 1px solid var(--color-brand);
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin-top: 10px;
+  }
+
+  .scope-group-title { margin-top: 22px; }
+  .scope-group-title:first-of-type { margin-top: 0; }
+
+  .payload-block {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 11px;
+    background: #1f2933;
+    color: #e6edf3;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .payload-label { font-weight: 600; color: var(--color-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+<% var mode = (typeof renderMode !== 'undefined') ? renderMode : 'full'; %>
+<% if (project.watermark_text) { %>
+  <% var wmSize = Math.max(36, Math.min(90, Math.round(900 / Math.max(project.watermark_text.length, 4)))); %>
+  <div class="watermark" style="font-size: <%= wmSize %>px;"><%= project.watermark_text %></div>
+<% } %>
+
+<% if (mode === 'full' || mode === 'cover') { %>
+<!-- Cover Page -->
+<% if (coverStyle === 'band') { %>
+<div class="page cover style-band align-<%= coverAlignment %>">
+  <div class="cover-band-top align-<%= coverAlignment %>">
+    <% if (project.logo_path) { %>
+      <img class="cover-logo" src="/<%= project.logo_path %>" />
+    <% } else if (project.company_name || project.prepared_by_org) { %>
+      <div class="cover-wordmark wm-<%= wordmarkStyle %>" style="<%= wordmark.inlineStyle %>"><%- wordmark.html %></div>
+    <% } %>
+    <div class="cover-title"><%= project.report_title %></div>
+    <div class="cover-subtitle"><%= project.report_subtitle || 'Vulnerability Assessment & Penetration Testing Report' %></div>
+    <div class="cover-meta"><%= new Date(project.assessment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+    <% if (project.iteration_label) { %><div class="cover-iteration"><%= project.iteration_label %></div><% } %>
+  </div>
+  <div class="cover-band-bottom">
+    <div class="cover-client-box">
+      <div class="cover-meta">
+        <strong><%= project.client_name || '—' %></strong><br/>
+        <% if (project.client_address) { %><%- nl2br(project.client_address) %><br/><% } %>
+        <% if (project.client_website) { %><%= project.client_website %><% } %>
+      </div>
+      <div class="cover-footer" style="margin-top:30px;">
+        <%= project.prepared_by_org || '' %><br/>
+        <%= project.tagline %>
+      </div>
+    </div>
+  </div>
+</div>
+<% } else { %>
+<div class="page cover style-<%= coverStyle %> align-<%= coverAlignment %>">
+  <div>
+    <% if (project.logo_path) { %>
+      <img class="cover-logo" src="/<%= project.logo_path %>" />
+    <% } else if (project.company_name || project.prepared_by_org) { %>
+      <div class="cover-wordmark wm-<%= wordmarkStyle %>" style="<%= wordmark.inlineStyle %>"><%- wordmark.html %></div>
+    <% } %>
+    <div class="cover-title"><%= project.report_title %></div>
+    <div class="cover-subtitle"><%= project.report_subtitle || 'Vulnerability Assessment & Penetration Testing Report' %></div>
+    <div class="cover-meta"><%= new Date(project.assessment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+    <% if (project.iteration_label) { %><div class="cover-iteration"><%= project.iteration_label %></div><% } %>
+  </div>
+  <div class="cover-client-box">
+    <div class="cover-meta">
+      <strong><%= project.client_name || '—' %></strong><br/>
+      <% if (project.client_address) { %><%- nl2br(project.client_address) %><br/><% } %>
+      <% if (project.client_website) { %><%= project.client_website %><% } %>
+    </div>
+    <div class="cover-footer" style="margin-top:30px;">
+      <%= project.prepared_by_org || '' %><br/>
+      <%= project.tagline %>
+    </div>
+  </div>
+</div>
+<% } %>
+<% } %>
+
+<% if (mode === 'full' || mode === 'rest') { %>
+
+<!-- Table of Contents -->
+<div class="page" id="page-toc">
+  <h2>Table of Contents</h2>
+  <% var toc = pageNumbers || {}; %>
+  <% [
+    ['exec-summary', '1. Executive Summary', '1. Executive Summary'],
+    ['assessment-scope', '2. Assessment Scope', '2. Assessment Scope'],
+    ['methodology', '3. Methodology', '3. Methodology'],
+    ['risk-rating', '4. Risk Rating', '4. Risk Rating'],
+    ['vulnerabilities-identified', '5. Vulnerabilities Identified', '5. Vulnerabilities Identified'],
+  ].forEach(function(trip) { %>
+    <div class="toc-item"><a href="#<%= trip[0] %>"><%= trip[1] %></a><% if (toc[trip[2]]) { %><a href="#<%= trip[0] %>"><%= toc[trip[2]] %></a><% } %></div>
+  <% }) %>
+  <% if (findingsWithRetests.length) { %>
+    <div class="toc-item"><a href="#retest-summary">Retest Summary</a><% if (toc['Retest Summary']) { %><a href="#retest-summary"><%= toc['Retest Summary'] %></a><% } %></div>
+  <% } %>
+  <% findings.forEach(function(f, i) { %>
+    <% var key = '5.' + (i + 1) + ' ' + f.identifier + ': ' + f.title; %>
+    <div class="toc-item toc-sub"><a href="#finding-<%= i %>"><%= key %></a><% if (toc[key]) { %><a href="#finding-<%= i %>"><%= toc[key] %></a><% } %></div>
+  <% }) %>
+</div>
+
+<!-- Executive Summary -->
+<div class="page">
+  <h2 id="exec-summary">1. Executive Summary</h2>
+  <p><%= project.executive_summary %></p>
+  <table>
+    <thead>
+      <tr><th>Identifier</th><th>Vulnerability</th><th>Category</th><th>OWASP</th><th>Risk Rating</th><th>CVSS</th><th>Alerts</th></tr>
+    </thead>
+    <tbody>
+      <% findings.forEach(function(f) { %>
+        <tr>
+          <td><%= f.identifier %></td>
+          <td><%= f.title %></td>
+          <td><%= f.category || '—' %></td>
+          <td><%= f.owasp_category ? f.owasp_category.split('-')[0] : '—' %></td>
+          <td><span class="badge badge-<%= f.severity.toLowerCase() %>"><%= f.severity %></span></td>
+          <td><%= f.cvss_score ? f.cvss_score.toFixed(1) : '—' %></td>
+          <td><%= Math.max(f.affected_urls.length, 1) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <h3>Vulnerabilities by Severity</h3>
+  <% var maxCount = Math.max(1, Object.values(severityCounts).reduce(function(a,b){ return Math.max(a,b); }, 0)); %>
+  <% var colors = { Critical: 'var(--color-critical)', High: 'var(--color-high)', Medium: 'var(--color-medium)', Low: 'var(--color-low)', Info: 'var(--color-info)' }; %>
+  <% ['Critical','High','Medium','Low','Info'].forEach(function(sev) { %>
+    <div class="chart-row">
+      <div class="chart-label"><%= sev %></div>
+      <div class="chart-bar-track">
+        <div class="chart-bar-fill" style="width: <%= (severityCounts[sev] / maxCount) * 100 %>%; background: <%= colors[sev] %>;"></div>
+      </div>
+      <div class="chart-count"><%= severityCounts[sev] %></div>
+    </div>
+  <% }) %>
+  <p class="muted" style="margin-top:16px;">Total findings: <%= totalFindings %> across <%= scopeItems.length %> scoped target(s).</p>
+
+  <% var owaspKeys = Object.keys(owaspCounts); %>
+  <% if (owaspKeys.length) { %>
+    <h3>Vulnerabilities by OWASP Top 10 (2021) Category</h3>
+    <% var owaspMax = Math.max(1, Object.values(owaspCounts).reduce(function(a,b){ return Math.max(a,b); }, 0)); %>
+    <% owaspKeys.sort().forEach(function(cat) { %>
+      <div class="chart-row">
+        <div class="chart-label" style="width:130px; text-align:left;"><%= cat.split('-')[0] %></div>
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill" style="width: <%= (owaspCounts[cat] / owaspMax) * 100 %>%; background: var(--color-brand);"></div>
+        </div>
+        <div class="chart-count"><%= owaspCounts[cat] %></div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<!-- Assessment Scope -->
+<div class="page">
+  <h2 id="assessment-scope">2. Assessment Scope</h2>
+  <p>The following targets and applications were included within the scope of this assessment.</p>
+  <% if (!scopeItems.length) { %>
+    <p class="muted">No scope items recorded.</p>
+  <% } else { %>
+    <% var scopeGroups = []; %>
+    <% scopeItems.forEach(function(s) { %>
+      <% var g = scopeGroups.find(function(x){ return x.name === s.group_name; }); %>
+      <% if (!g) { g = { name: s.group_name || 'Scope', items: [] }; scopeGroups.push(g); } %>
+      <% g.items.push(s); %>
+    <% }) %>
+    <% scopeGroups.forEach(function(g) { %>
+      <h3 class="scope-group-title"><%= g.name %></h3>
+      <% var isApp = g.items.every(function(i){ return i.item_type === 'app'; }); %>
+      <% if (isApp) { %>
+        <table>
+          <thead><tr><th>Application Name</th><th>Version</th><th>Platform</th><% if (project.iteration_label) { %><th>Iteration</th><% } %></tr></thead>
+          <tbody>
+            <% g.items.forEach(function(i) { %>
+              <tr><td><%= i.app_name %></td><td><%= i.app_version || '—' %></td><td><%= i.platform || '—' %></td><% if (project.iteration_label) { %><td><%= project.iteration_label %></td><% } %></tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <table>
+          <thead><tr><th style="width:15%;">Tenant</th><th>URL / Target</th><% if (project.iteration_label) { %><th style="width:18%;">Iteration</th><% } %></tr></thead>
+          <tbody>
+            <% g.items.forEach(function(i) { %>
+              <tr><td><%= i.tenant %></td><td><%= i.url %></td><% if (project.iteration_label) { %><td><%= project.iteration_label %></td><% } %></tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    <% }) %>
+  <% } %>
+</div>
+
+<!-- Methodology -->
+<div class="page">
+  <h2 id="methodology">3. Methodology</h2>
+  <% var lines = (project.methodology || '').split('\n').filter(function(l){ return l.trim().length; }); %>
+  <% var bulletLines = lines.filter(function(l){ return l.trim().startsWith('-'); }); %>
+  <% var paraLines = lines.filter(function(l){ return !l.trim().startsWith('-'); }); %>
+  <% paraLines.forEach(function(l) { %><p><%= l %></p><% }) %>
+  <% if (bulletLines.length) { %>
+    <ul>
+      <% bulletLines.forEach(function(l) { %><li><%= l.replace(/^-\s*/, '') %></li><% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<!-- Risk Rating -->
+<div class="page">
+  <h2 id="risk-rating">4. Risk Rating</h2>
+  <p>Each finding is assigned a risk rating based on the likelihood of exploitation and the impact of a
+  successful attack, consistent with the approach described in OWASP guidance and NIST SP 800-30.
+  Where applicable, the Common Vulnerability Scoring System (CVSS v3.1) is used to provide an
+  additional, standardized severity score from 0-10.</p>
+
+  <table class="matrix-table">
+    <thead><tr><th></th><th>Low Impact</th><th>Medium Impact</th><th>High Impact</th></tr></thead>
+    <tbody>
+      <tr><th>High Likelihood</th><td class="matrix-low">Low</td><td class="matrix-medium">Medium</td><td class="matrix-high">High</td></tr>
+      <tr><th>Medium Likelihood</th><td class="matrix-low">Low</td><td class="matrix-medium">Medium</td><td class="matrix-high">High</td></tr>
+      <tr><th>Low Likelihood</th><td class="matrix-low">Low</td><td class="matrix-low">Low</td><td class="matrix-medium">Medium</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Likelihood</h3>
+  <p><strong>High</strong> — Exploitation requires no special skills or motivation; proof-of-concept code or
+  tooling is readily available.<br/>
+  <strong>Medium</strong> — Exploitation requires some skill and motivation, or non-default configuration.<br/>
+  <strong>Low</strong> — Exploitation requires specialized skills, high privileges, or is otherwise impractical
+  for most attackers.</p>
+
+  <h3>Impact</h3>
+  <p><strong>High</strong> — Could allow an attacker to gain elevated privileges, execute arbitrary code, or
+  access/exfiltrate sensitive data.<br/>
+  <strong>Medium</strong> — Could disrupt business operations in the short term or partially compromise the
+  system.<br/>
+  <strong>Low</strong> — No meaningful additional access is gained and operations are not disrupted.</p>
+</div>
+
+<!-- Vulnerabilities Identified Summary -->
+<div class="page">
+  <h2 id="vulnerabilities-identified">5. Vulnerabilities Identified</h2>
+  <p>The following vulnerabilities were identified during manual and automated testing.</p>
+  <table>
+    <thead><tr><th>Vulnerability</th><th>Severity</th><th>Description</th><th>Count</th></tr></thead>
+    <tbody>
+      <% findings.forEach(function(f) { %>
+        <tr>
+          <td><%= f.title %></td>
+          <td><span class="badge badge-<%= f.severity.toLowerCase() %>"><%= f.severity %></span></td>
+          <td><%= f.description %></td>
+          <td><%= Math.max(f.affected_urls.length, 1) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Retest Summary -->
+<% if (findingsWithRetests.length) { %>
+<div class="page">
+  <h2 id="retest-summary">Retest Summary</h2>
+  <p>The following findings have recorded retest activity since they were originally identified.</p>
+  <% findingsWithRetests.forEach(function(f) { %>
+    <h3 class="scope-group-title"><%= f.identifier %>: <%= f.title %> <span class="badge badge-<%= f.severity.toLowerCase() %>" style="margin-left:8px;"><%= f.status %></span></h3>
+    <table>
+      <thead><tr><th style="width:14%;">Date</th><th style="width:16%;">Previous Status</th><th style="width:16%;">New Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <% f.retest_events.forEach(function(ev) { %>
+          <tr><td><%= ev.event_date %></td><td><%= ev.previous_status %></td><td><%= ev.new_status %></td><td><%- nl2br(ev.notes || '—') %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% }) %>
+</div>
+<% } %>
+
+<!-- Individual Findings -->
+<% findings.forEach(function(f, idx) { %>
+<div class="page" id="finding-<%= idx %>">
+  <div class="finding-header sev-<%= f.severity.toLowerCase() %>">
+    <h3>5.<%= idx + 1 %> <%= f.identifier %>: <%= f.title %></h3>
+  </div>
+
+  <table class="info-table">
+    <tr><td>Identifier</td><td><%= f.identifier %></td><td>Impact</td><td><%= f.impact %></td><td>Risk Rating</td><td><span class="badge badge-<%= f.severity.toLowerCase() %>"><%= f.severity %></span></td></tr>
+    <tr><td>Scope</td><td><%= f.scope_type || 'Web Application' %></td><td>Likelihood</td><td><%= f.likelihood %></td><td>CVSS Score</td><td><%= f.cvss_score ? f.cvss_score.toFixed(1) : 'N/A' %></td></tr>
+    <% if (f.category) { %>
+    <tr><td>Category</td><td colspan="5"><%= f.category %></td></tr>
+    <% } %>
+    <% if (f.owasp_category || f.cwe_id) { %>
+    <tr>
+      <td>OWASP</td><td><%= f.owasp_category || '—' %></td>
+      <td>CWE</td><td colspan="3"><%= f.cwe_id || '—' %></td>
+    </tr>
+    <% } %>
+    <% if (f.cvss_vector) { %>
+    <tr><td>CVSS Vector</td><td colspan="5"><span class="code"><%= f.cvss_vector %></span></td></tr>
+    <% } %>
+    <tr><td>Status</td><td colspan="5"><%= f.status %></td></tr>
+  </table>
+
+  <h3>Description</h3>
+  <p><%- nl2br(f.description || 'No description provided.') %></p>
+
+  <h3>Vulnerable Endpoint(s)</h3>
+  <% if (f.affected_urls.length) { %>
+    <ul>
+      <% f.affected_urls.forEach(function(u) { %><li class="code"><%= u.url %></li><% }) %>
+    </ul>
+  <% } else { %>
+    <p class="muted">No affected URLs recorded.</p>
+  <% } %>
+
+  <h3>Proof of Concept / Reproduction Steps</h3>
+  <% if (f.poc_steps.length) { %>
+    <ol>
+      <% f.poc_steps.forEach(function(step) { %>
+        <li class="poc-step">
+          <%- nl2br(step.step_text || '') %>
+          <% if (step.payload) { %>
+            <div class="payload-label">Payload</div>
+            <div class="payload-block"><%= step.payload %></div>
+          <% } %>
+          <% if (step.screenshot_path) { %>
+            <img src="/<%= step.screenshot_path %>" />
+          <% } %>
+        </li>
+      <% }) %>
+    </ol>
+  <% } else { %>
+    <p class="muted">No reproduction steps recorded.</p>
+  <% } %>
+
+  <h3>Suggested Remediation</h3>
+  <p><%- nl2br(f.remediation || 'No remediation provided.') %></p>
+
+  <% if (f.references.length) { %>
+    <h3>References</h3>
+    <ul>
+      <% f.references.forEach(function(r) { %><li><%= r.label %> — <span class="code"><%= r.url %></span></li><% }) %>
+    </ul>
+  <% } %>
+</div>
+<% }) %>
+<% } %>
+
+</body>
+</html>
