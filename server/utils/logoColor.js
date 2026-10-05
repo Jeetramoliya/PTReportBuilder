@@ -1,16 +1,13 @@
-const fs = require('fs');
-const path = require('path');
 const { PNG } = require('pngjs');
 const jpeg = require('jpeg-js');
 
-function decodeToRgba(absPath) {
-  const buf = fs.readFileSync(absPath);
-  const ext = path.extname(absPath).toLowerCase();
-  if (ext === '.png') {
+function decodeToRgba(buf, ext) {
+  const e = String(ext || '').toLowerCase();
+  if (e === '.png') {
     const png = PNG.sync.read(buf);
     return { data: png.data, width: png.width, height: png.height };
   }
-  if (ext === '.jpg' || ext === '.jpeg') {
+  if (e === '.jpg' || e === '.jpeg') {
     const img = jpeg.decode(buf, { useTArray: true });
     return { data: img.data, width: img.width, height: img.height };
   }
@@ -22,8 +19,8 @@ function toHex(n) {
 }
 
 // Averages the most saturated, non-white/black/gray pixels to guess a brand accent color.
-function extractDominantColor(absPath) {
-  const decoded = decodeToRgba(absPath);
+function extractDominantColor(buffer, ext) {
+  const decoded = decodeToRgba(buffer, ext);
   if (!decoded) return null;
 
   const { data, width, height } = decoded;

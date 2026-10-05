@@ -17,9 +17,9 @@ const SEVERITY_TO_IMPACT_LIKELIHOOD = {
 };
 
 // Parse a scanner export and return a preview list — nothing is saved yet.
-router.post('/projects/:id/preview', upload.single('file'), (req, res, next) => {
+router.post('/projects/:id/preview', upload.single('file'), async (req, res, next) => {
   try {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -43,15 +43,15 @@ router.post('/projects/:id/preview', upload.single('file'), (req, res, next) => 
 });
 
 // Create findings from a previously-parsed, user-confirmed selection.
-router.post('/projects/:id/commit', (req, res, next) => {
+router.post('/projects/:id/commit', async (req, res, next) => {
   try {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     const items = Array.isArray(req.body.findings) ? req.body.findings : [];
     if (!items.length) return res.status(400).json({ error: 'No findings selected' });
 
-    let seq = db.prepare('SELECT COUNT(*) as c FROM findings WHERE project_id = ?').get(project.id).c;
-    let maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM findings WHERE project_id = ?').get(project.id).m;
+    let seq = (await db.prepare('SELECT COUNT(*) as c FROM findings WHERE project_id = ?').get(project.id)).c;
+    let maxOrder = (await db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM findings WHERE project_id = ?').get(project.id)).m;
 
     const createdIds = [];
     for (const item of items) {
@@ -62,7 +62,7 @@ router.post('/projects/:id/commit', (req, res, next) => {
       const risk = riskFromLikelihoodImpact(likelihood, impact);
       const id = nanoid();
       const identifier = `${project.finding_prefix || 'WEB'}-${seq}`;
-      db.prepare(
+      await db.prepare(
         `INSERT INTO findings (id, project_id, identifier, title, category, severity, impact, likelihood, risk_rating, description, remediation, sort_order)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
@@ -70,12 +70,12 @@ router.post('/projects/:id/commit', (req, res, next) => {
         severity, impact, likelihood, risk, item.description || '', item.remediation || '', maxOrder
       );
       if (item.url) {
-        db.prepare('INSERT INTO affected_urls (id, finding_id, url, sort_order) VALUES (?, ?, ?, 0)').run(nanoid(), id, item.url);
+        await db.prepare('INSERT INTO affected_urls (id, finding_id, url, sort_order) VALUES (?, ?, ?, 0)').run(nanoid(), id, item.url);
       }
       createdIds.push(id);
     }
 
-    db.prepare("UPDATE projects SET updated_at = datetime('now') WHERE id = ?").run(project.id);
+    await db.prepare("UPDATE projects SET updated_at = datetime('now') WHERE id = ?").run(project.id);
     res.status(201).json({ created: createdIds.length });
   } catch (e) {
     next(e);

@@ -1,26 +1,12 @@
 const path = require('path');
 const fs = require('fs');
 
-// All mutable data (the SQLite database and uploaded logos/screenshots) lives under
-// DATA_DIR. On a host with a persistent disk, point DATA_DIR at the mounted volume
-// (e.g. /data) so nothing is lost on redeploy. Defaults to the project root, preserving
-// the original local layout (./data/vapt.db, ./uploads/...).
+// Local node:sqlite backend stores its file under DATA_DIR (defaults to the project root,
+// giving ./data/vapt.db). In production the DB is Turso and uploads live in the DB, so this
+// path is only used for local development. Uploaded images are stored in the DB, not on disk.
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..');
-const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const DB_PATH = path.join(DATA_DIR, 'data', 'vapt.db');
 
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
+if (!fs.existsSync(path.dirname(DB_PATH))) fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-ensureDir(path.dirname(DB_PATH));
-ensureDir(path.join(UPLOADS_DIR, 'logos'));
-ensureDir(path.join(UPLOADS_DIR, 'screenshots'));
-
-// Maps a stored relative upload path (e.g. "uploads/logos/x.png") to its absolute path
-// under DATA_DIR, so stored paths stay portable across hosts.
-function resolveUpload(relPath) {
-  return path.join(DATA_DIR, relPath);
-}
-
-module.exports = { DATA_DIR, UPLOADS_DIR, DB_PATH, resolveUpload };
+module.exports = { DATA_DIR, DB_PATH };

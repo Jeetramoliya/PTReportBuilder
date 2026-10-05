@@ -1,5 +1,9 @@
 # VAPT Report Builder — container image for any host that runs a long-lived Node
-# process with a persistent volume (Render, Railway, Fly.io, a VPS, etc.).
+# process (Render, Railway, Fly.io, a VPS, etc.).
+#
+# Data is stored in a Turso (libSQL) database when DATABASE_URL is set, so no persistent
+# disk is required — the free tier of these hosts works. Without DATABASE_URL it falls back
+# to a local SQLite file under DATA_DIR (needs a writable/persistent path).
 #
 # Ships a system Chromium so Puppeteer (PDF export) works without downloading its own.
 FROM node:22-bookworm-slim
@@ -25,10 +29,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY . .
-
-# Persistent data (SQLite database + uploaded logos/screenshots) lives here — mount a
-# volume at /data so it survives restarts and redeploys.
-VOLUME ["/data"]
 
 EXPOSE 4173
 CMD ["node", "server/index.js"]

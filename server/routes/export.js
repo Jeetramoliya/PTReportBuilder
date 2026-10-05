@@ -5,8 +5,8 @@ const db = require('../db');
 
 const router = express.Router();
 
-function ownsProject(id, userId) {
-  return !!db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId);
+async function ownsProject(id, userId) {
+  return !!(await db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId));
 }
 
 const COLUMNS = [
@@ -38,10 +38,10 @@ function csvEscape(value) {
   return s;
 }
 
-router.get('/projects/:id/findings.csv', (req, res, next) => {
+router.get('/projects/:id/findings.csv', async (req, res, next) => {
   try {
-    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
-    const data = buildReportData(req.params.id);
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 
     const rows = [COLUMNS.map((c) => c.header)];
@@ -64,8 +64,8 @@ router.get('/projects/:id/findings.csv', (req, res, next) => {
 
 router.get('/projects/:id/findings.xlsx', async (req, res, next) => {
   try {
-    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
-    const data = buildReportData(req.params.id);
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 
     const workbook = new ExcelJS.Workbook();

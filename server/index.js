@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
-require('./db'); // ensures schema is created
-const { UPLOADS_DIR } = require('./paths');
+const db = require('./db');
 
 const requireAuth = require('./middleware/requireAuth');
 
@@ -14,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use(requireAuth);
 
-app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', require('./routes/uploads'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use('/api/projects', require('./routes/projects'));
@@ -29,6 +28,13 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`VAPT Report Builder running at http://localhost:${PORT}`);
-});
+db.initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`VAPT Report Builder running at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  });

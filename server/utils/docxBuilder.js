@@ -1,12 +1,8 @@
-const fs = require('fs');
-const path = require('path');
 const sizeOf = require('image-size').default || require('image-size');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
   ImageRun, WidthType, AlignmentType, BorderStyle, ShadingType, PageBreak, VerticalAlign,
 } = require('docx');
-
-const { resolveUpload } = require('../paths');
 
 function hex(c) {
   return String(c || '#000000').replace('#', '').toUpperCase();
@@ -62,14 +58,12 @@ function bulletList(items) {
   return items.map((t) => new Paragraph({ text: t, bullet: { level: 0 }, spacing: { after: 80 } }));
 }
 
-function imageRunFromFile(relPath, maxWidth) {
+function imageRunFromBytes(buf, maxWidth) {
   try {
-    const abs = resolveUpload(relPath);
-    if (!fs.existsSync(abs)) return null;
-    const buf = fs.readFileSync(abs);
+    if (!buf || !buf.length) return null;
     const dims = sizeOf(buf);
-    const ext = (path.extname(abs).slice(1) || 'png').toLowerCase();
-    const type = ['png', 'jpg', 'jpeg', 'gif', 'bmp'].includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'png';
+    const t = (dims.type || 'png').toLowerCase();
+    const type = ['png', 'jpg', 'jpeg', 'gif', 'bmp'].includes(t) ? (t === 'jpeg' ? 'jpg' : t) : 'png';
     let width = dims.width || maxWidth;
     let height = dims.height || Math.round(maxWidth * 0.5);
     if (width > maxWidth) {
@@ -89,8 +83,8 @@ function buildDocx(data) {
   const children = [];
 
   // ---- Cover ----
-  if (project.logo_path) {
-    const logo = imageRunFromFile(project.logo_path, 260);
+  if (data.logoBytes) {
+    const logo = imageRunFromBytes(data.logoBytes, 260);
     if (logo) children.push(new Paragraph({ children: [logo], spacing: { after: 300 } }));
   }
   children.push(new Paragraph({
@@ -284,8 +278,8 @@ function buildDocx(data) {
             children: [new TextRun({ text: step.payload, color: 'E6EDF3', font: 'Consolas' })],
           }));
         }
-        if (step.screenshot_path) {
-          const img = imageRunFromFile(step.screenshot_path, 420);
+        if (step.screenshot_bytes) {
+          const img = imageRunFromBytes(step.screenshot_bytes, 420);
           if (img) children.push(new Paragraph({ spacing: { after: 160 }, children: [img] }));
         }
       });

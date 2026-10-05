@@ -25,9 +25,9 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
-function createUser(email, name, password) {
+async function createUser(email, name, password) {
   const id = nanoid();
-  db.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
+  await db.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
     .run(id, normalizeEmail(email), String(name || '').trim(), hashPassword(password));
   return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
 }
@@ -40,27 +40,27 @@ function getUserById(id) {
   return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
 }
 
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  db.prepare('INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+  await db.prepare('INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
   return token;
 }
 
-function destroySession(token) {
-  if (token) db.prepare('DELETE FROM user_sessions WHERE token = ?').run(token);
+async function destroySession(token) {
+  if (token) await db.prepare('DELETE FROM user_sessions WHERE token = ?').run(token);
 }
 
 // Returns the user row for a valid, unexpired session token, or null.
-function userForSession(token) {
+async function userForSession(token) {
   if (!token) return null;
-  const row = db.prepare('SELECT user_id, expires_at FROM user_sessions WHERE token = ?').get(token);
+  const row = await db.prepare('SELECT user_id, expires_at FROM user_sessions WHERE token = ?').get(token);
   if (!row) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) {
-    destroySession(token);
+    await destroySession(token);
     return null;
   }
-  return getUserById(row.user_id) || null;
+  return (await getUserById(row.user_id)) || null;
 }
 
 function parseCookies(req) {

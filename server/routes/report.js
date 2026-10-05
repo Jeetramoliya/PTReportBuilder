@@ -14,8 +14,8 @@ const MARGIN_MM = { top: 20, bottom: 18, left: 10, right: 10 };
 const router = express.Router();
 const templatePath = path.join(__dirname, '..', 'templates', 'report.ejs');
 
-function ownsProject(id, userId) {
-  return !!db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId);
+async function ownsProject(id, userId) {
+  return !!(await db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId));
 }
 
 function normalize(s) {
@@ -63,8 +63,8 @@ async function buildPageNumbers(pdfBuffer, sections) {
 
 router.get('/projects/:id/report/preview', async (req, res, next) => {
   try {
-    if (!ownsProject(req.params.id, req.userId)) return res.status(404).send('Project not found');
-    const data = buildReportData(req.params.id);
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).send('Project not found');
+    const data = await buildReportData(req.params.id);
     if (!data) return res.status(404).send('Project not found');
     if (req.query.pn) {
       try {
@@ -86,8 +86,8 @@ router.get('/projects/:id/report/preview', async (req, res, next) => {
 router.get('/projects/:id/report/pdf', async (req, res, next) => {
   let browser;
   try {
-    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
-    const data = buildReportData(req.params.id);
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 
     const sessionToken = parseCookies(req)[SESSION_COOKIE];
@@ -166,8 +166,8 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
 
 router.get('/projects/:id/report/docx', async (req, res, next) => {
   try {
-    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
-    const data = buildReportData(req.params.id);
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 
     const buffer = await buildDocx(data);

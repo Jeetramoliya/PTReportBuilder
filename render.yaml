@@ -1,17 +1,18 @@
-# One-click Render blueprint. Render builds the Dockerfile and mounts a 1 GB persistent
-# disk at /data for the database and uploads. A persistent disk requires a paid instance
-# type (Starter or higher) — the free tier has no persistent storage.
+# One-click Render blueprint for the FREE tier.
+#
+# Data lives in a free Turso (libSQL) database, and uploaded images are stored in that
+# database too — so no persistent disk is needed and the free instance type works. Set
+# DATABASE_URL and DATABASE_AUTH_TOKEN in the Render dashboard (marked sync: false below so
+# they are not committed to git). See DEPLOY.md for how to get them.
 services:
   - type: web
     name: ptreportbuilder
     runtime: docker
-    plan: starter
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1
+    plan: free
     envVars:
-      - key: DATA_DIR
-        value: /data
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_AUTH_TOKEN
+        sync: false

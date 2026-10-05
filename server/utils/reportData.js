@@ -1,4 +1,5 @@
 const db = require('../db');
+const { getUpload } = require('../uploads');
 const { severityRank } = require('./riskMatrix');
 const { resolveTheme, resolvePageBackground } = require('./themes');
 const { getFont } = require('./fonts');
@@ -48,22 +49,32 @@ function buildWordmark(project, theme) {
   return { hasName: !!name, inlineStyle: parts.join(';'), html };
 }
 
-function buildReportData(projectId) {
-  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+async function buildReportData(projectId) {
+  const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
   if (!project) return null;
 
-  const scopeItems = db.prepare('SELECT * FROM scope_items WHERE project_id = ? ORDER BY sort_order, rowid').all(projectId);
+  const scopeItems = await db.prepare('SELECT * FROM scope_items WHERE project_id = ? ORDER BY sort_order, rowid').all(projectId);
 
-  const findings = db
-    .prepare('SELECT * FROM findings WHERE project_id = ? ORDER BY sort_order, rowid')
-    .all(projectId)
-    .map((f) => ({
+  const findingRows = await db.prepare('SELECT * FROM findings WHERE project_id = ? ORDER BY sort_order, rowid').all(projectId);
+  const findings = [];
+  for (const f of findingRows) {
+    const poc_steps = await db.prepare('SELECT * FROM poc_steps WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id);
+    // Attach raw screenshot bytes for the DOCX builder (the HTML/PDF path fetches them
+    // over HTTP from /uploads instead).
+    for (const step of poc_steps) {
+      if (step.screenshot_path) {
+        const up = await getUpload(step.screenshot_path);
+        step.screenshot_bytes = up ? up.data : null;
+      }
+    }
+    findings.push({
       ...f,
-      affected_urls: db.prepare('SELECT * FROM affected_urls WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
-      poc_steps: db.prepare('SELECT * FROM poc_steps WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
-      references: db.prepare('SELECT * FROM finding_references WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
-      retest_events: db.prepare('SELECT * FROM retest_events WHERE finding_id = ? ORDER BY event_date, rowid').all(f.id),
-    }));
+      affected_urls: await db.prepare('SELECT * FROM affected_urls WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
+      poc_steps,
+      references: await db.prepare('SELECT * FROM finding_references WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
+      retest_events: await db.prepare('SELECT * FROM retest_events WHERE finding_id = ? ORDER BY event_date, rowid').all(f.id),
+    });
+  }
 
   const findingsSorted = [...findings].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 
@@ -85,8 +96,16 @@ function buildReportData(projectId) {
 
   const theme = resolveTheme(project);
 
+  // Logo bytes for the DOCX builder (HTML/PDF fetch it over HTTP from /uploads).
+  let logoBytes = null;
+  if (project.logo_path) {
+    const up = await getUpload(project.logo_path);
+    logoBytes = up ? up.data : null;
+  }
+
   return {
     project,
+    logoBytes,
     theme,
     font: getFont(project.font_family),
     coverStyle: project.cover_style || 'classic',
