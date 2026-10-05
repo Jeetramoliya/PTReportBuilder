@@ -7,6 +7,7 @@ const db = require('../db');
 const { THEMES, COVER_STYLES, PAGE_BACKGROUNDS, HEADER_FOOTER_STYLES, COVER_ALIGNMENTS, WORDMARK_STYLES } = require('../utils/themes');
 const { FONTS } = require('../utils/fonts');
 const { extractDominantColor } = require('../utils/logoColor');
+const { UPLOADS_DIR, resolveUpload } = require('../paths');
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.get('/meta/themes', (req, res) => {
   });
 });
 
-const logoDir = path.join(__dirname, '..', '..', 'uploads', 'logos');
+const logoDir = path.join(UPLOADS_DIR, 'logos');
 const logoUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, logoDir),
@@ -138,7 +139,7 @@ router.put('/:id', (req, res) => {
   if (typeof req.body.company_name === 'string' && req.body.company_name.trim()) {
     const current = db.prepare('SELECT logo_path FROM projects WHERE id = ?').get(project.id);
     if (current && current.logo_path) {
-      const p = path.join(__dirname, '..', '..', current.logo_path);
+      const p = resolveUpload(current.logo_path);
       fs.existsSync(p) && fs.unlinkSync(p);
       db.prepare("UPDATE projects SET logo_path = '' WHERE id = ?").run(project.id);
     }
@@ -151,7 +152,7 @@ router.delete('/:id', (req, res) => {
   const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (project.logo_path) {
-    const p = path.join(__dirname, '..', '..', project.logo_path);
+    const p = resolveUpload(project.logo_path);
     fs.existsSync(p) && fs.unlinkSync(p);
   }
   db.prepare('DELETE FROM projects WHERE id = ?').run(project.id);
@@ -163,7 +164,7 @@ router.post('/:id/logo', logoUpload.single('logo'), (req, res) => {
   if (!project) return;
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   if (project.logo_path) {
-    const old = path.join(__dirname, '..', '..', project.logo_path);
+    const old = resolveUpload(project.logo_path);
     fs.existsSync(old) && fs.unlinkSync(old);
   }
   const relPath = `uploads/logos/${req.file.filename}`;
@@ -176,7 +177,7 @@ router.delete('/:id/logo', (req, res) => {
   const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (project.logo_path) {
-    const p = path.join(__dirname, '..', '..', project.logo_path);
+    const p = resolveUpload(project.logo_path);
     fs.existsSync(p) && fs.unlinkSync(p);
   }
   db.prepare("UPDATE projects SET logo_path = '', updated_at = datetime('now') WHERE id = ?").run(project.id);
@@ -192,7 +193,7 @@ router.post('/:id/logo-color', (req, res) => {
     return res.status(400).json({ error: 'Color extraction only supports PNG or JPEG logos' });
   }
   try {
-    const color = extractDominantColor(path.join(__dirname, '..', '..', project.logo_path));
+    const color = extractDominantColor(resolveUpload(project.logo_path));
     if (!color) return res.status(400).json({ error: 'Could not determine a color from this logo' });
     db.prepare("UPDATE projects SET theme = 'custom', custom_brand_color = ?, updated_at = datetime('now') WHERE id = ?").run(color, project.id);
     res.json(db.prepare('SELECT * FROM projects WHERE id = ?').get(project.id));

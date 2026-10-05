@@ -6,10 +6,11 @@ const { nanoid } = require('nanoid');
 const db = require('../db');
 const cvss = require('../utils/cvss');
 const { riskFromLikelihoodImpact } = require('../utils/riskMatrix');
+const { UPLOADS_DIR, resolveUpload } = require('../paths');
 
 const router = express.Router();
 
-const screenshotDir = path.join(__dirname, '..', '..', 'uploads', 'screenshots');
+const screenshotDir = path.join(UPLOADS_DIR, 'screenshots');
 const screenshotUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, screenshotDir),
@@ -160,7 +161,7 @@ router.delete('/findings/:id', (req, res) => {
   const steps = db.prepare('SELECT screenshot_path FROM poc_steps WHERE finding_id = ?').all(finding.id);
   for (const s of steps) {
     if (s.screenshot_path) {
-      const p = path.join(__dirname, '..', '..', s.screenshot_path);
+      const p = resolveUpload(s.screenshot_path);
       fs.existsSync(p) && fs.unlinkSync(p);
     }
   }
@@ -244,14 +245,14 @@ router.put('/poc/:stepId', screenshotUpload.single('screenshot'), (req, res) => 
   let screenshotPath = step.screenshot_path;
   if (req.file) {
     if (screenshotPath) {
-      const old = path.join(__dirname, '..', '..', screenshotPath);
+      const old = resolveUpload(screenshotPath);
       fs.existsSync(old) && fs.unlinkSync(old);
     }
     screenshotPath = `uploads/screenshots/${req.file.filename}`;
   }
   if (req.body.remove_screenshot === 'true' && !req.file) {
     if (screenshotPath) {
-      const old = path.join(__dirname, '..', '..', screenshotPath);
+      const old = resolveUpload(screenshotPath);
       fs.existsSync(old) && fs.unlinkSync(old);
     }
     screenshotPath = '';
@@ -266,7 +267,7 @@ router.delete('/poc/:stepId', (req, res) => {
   const step = ownedSubRow('poc_steps', req.params.stepId, req.userId);
   if (!step) return res.status(404).json({ error: 'Step not found' });
   if (step.screenshot_path) {
-    const p = path.join(__dirname, '..', '..', step.screenshot_path);
+    const p = resolveUpload(step.screenshot_path);
     fs.existsSync(p) && fs.unlinkSync(p);
   }
   db.prepare('DELETE FROM poc_steps WHERE id = ?').run(step.id);

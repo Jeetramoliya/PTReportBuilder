@@ -1,4 +1,3 @@
-const path = require('path');
 const db = require('../db');
 const { severityRank } = require('./riskMatrix');
 const { resolveTheme, resolvePageBackground } = require('./themes');
@@ -104,7 +103,6 @@ function buildReportData(projectId) {
     totalFindings: findings.length,
     totalAlerts,
     generatedAt: new Date().toISOString().slice(0, 10),
-    projectRoot: path.join(__dirname, '..', '..'),
     nl2br,
     pageNumbers: {},
   };

@@ -6,7 +6,7 @@ const {
   ImageRun, WidthType, AlignmentType, BorderStyle, ShadingType, PageBreak, VerticalAlign,
 } = require('docx');
 
-const projectRootDir = path.join(__dirname, '..', '..');
+const { resolveUpload } = require('../paths');
 
 function hex(c) {
   return String(c || '#000000').replace('#', '').toUpperCase();
@@ -64,7 +64,7 @@ function bulletList(items) {
 
 function imageRunFromFile(relPath, maxWidth) {
   try {
-    const abs = path.join(projectRootDir, relPath);
+    const abs = resolveUpload(relPath);
     if (!fs.existsSync(abs)) return null;
     const buf = fs.readFileSync(abs);
     const dims = sizeOf(buf);

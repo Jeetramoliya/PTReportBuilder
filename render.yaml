@@ -1,0 +1,17 @@
+# One-click Render blueprint. Render builds the Dockerfile and mounts a 1 GB persistent
+# disk at /data for the database and uploads. A persistent disk requires a paid instance
+# type (Starter or higher) — the free tier has no persistent storage.
+services:
+  - type: web
+    name: ptreportbuilder
+    runtime: docker
+    plan: starter
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: NODE_ENV
+        value: production

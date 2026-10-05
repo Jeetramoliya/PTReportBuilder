@@ -108,7 +108,13 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
 
     const sections = tocSections(data);
 
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      // On a container that ships its own Chromium, point at it via env; otherwise
+      // Puppeteer uses the browser it downloaded during `npm install`.
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    });
     const page = await browser.newPage();
 
     // The internal preview URL is behind authentication, so hand Puppeteer the same

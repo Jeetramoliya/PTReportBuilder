@@ -1,11 +1,7 @@
 const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
-const fs = require('fs');
+const { DB_PATH } = require('./paths');
 
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-const db = new DatabaseSync(path.join(dataDir, 'vapt.db'));
+const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`

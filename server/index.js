@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 require('./db'); // ensures schema is created
+const { UPLOADS_DIR } = require('./paths');
 
 const requireAuth = require('./middleware/requireAuth');
 
@@ -13,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use(requireAuth);
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(UPLOADS_DIR));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use('/api/projects', require('./routes/projects'));
