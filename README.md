@@ -38,7 +38,7 @@ Then open http://localhost:4173
 - **Report generation** — "Preview Report" opens the full HTML report in a new tab. The Export menu offers:
   - **PDF** — rendered with Puppeteer (headless Chromium), paginated with headers/footers, and a real Table of Contents with accurate page numbers (built via a two-pass render: the report is generated once to measure where each section lands, then regenerated with those page numbers filled in).
   - **DOCX** — an editable Word version built natively with the `docx` library (real tables, embedded images, no HTML conversion) so the client or your team can mark it up directly in Word.
-- **Password protection** — optional, app-wide (not per-project accounts, since this is a local single-user tool by design). Set a password from the "Security" link on the dashboard; once set, every page and API route requires signing in via `/login.html`, backed by an HttpOnly session cookie.
+- **User accounts** — each user signs up with an email + password and sees only their own projects. Every project is owned by its creator and all data (findings, evidence, reports, exports) is scoped to the owner, so two people using the same deployment cannot see or edit each other's work. Sessions are HttpOnly cookies backed by a `user_sessions` table; passwords are stored as salted scrypt hashes.
 
 All finding/PoC text is HTML-escaped before rendering, so a payload like `<script>...</script>` in your evidence is shown as literal text in the report rather than being executed.
 

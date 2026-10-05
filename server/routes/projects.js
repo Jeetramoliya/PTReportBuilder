@@ -35,8 +35,10 @@ const logoUpload = multer({
   },
 });
 
-function getProjectOr404(id, res) {
-  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
+// Only returns the project if it belongs to the requesting user; otherwise 404 (so you
+// can't even tell whether another user's project id exists).
+function getProjectOr404(id, res, userId) {
+  const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(id, userId);
   if (!project) {
     res.status(404).json({ error: 'Project not found' });
     return null;
@@ -49,9 +51,9 @@ router.get('/', (req, res) => {
     .prepare(
       `SELECT p.*,
         (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id) as finding_count
-       FROM projects p ORDER BY p.updated_at DESC`
+       FROM projects p WHERE p.user_id = ? ORDER BY p.updated_at DESC`
     )
-    .all();
+    .all(req.userId);
   res.json(projects);
 });
 
@@ -71,10 +73,11 @@ router.post('/', (req, res) => {
   const defaultExecSummary = 'The following table lists the findings from the assessment, along with their risk rating.';
 
   db.prepare(
-    `INSERT INTO projects (id, name, client_name, client_address, client_website, report_title, report_subtitle, iteration_label, assessment_date, tester_name, prepared_by_org, tagline, finding_prefix, methodology, executive_summary, theme, cover_style)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO projects (id, user_id, name, client_name, client_address, client_website, report_title, report_subtitle, iteration_label, assessment_date, tester_name, prepared_by_org, tagline, finding_prefix, methodology, executive_summary, theme, cover_style)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
+    req.userId,
     name.trim(),
     client_name || '',
     client_address || '',
@@ -96,7 +99,7 @@ router.post('/', (req, res) => {
 });
 
 router.get('/:id', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   const scope = db.prepare('SELECT * FROM scope_items WHERE project_id = ? ORDER BY sort_order, rowid').all(project.id);
   const findings = db
@@ -106,7 +109,7 @@ router.get('/:id', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   const fields = [
     'name', 'client_name', 'client_address', 'client_website', 'company_name', 'wordmark_style',
@@ -145,7 +148,7 @@ router.put('/:id', (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (project.logo_path) {
     const p = path.join(__dirname, '..', '..', project.logo_path);
@@ -156,7 +159,7 @@ router.delete('/:id', (req, res) => {
 });
 
 router.post('/:id/logo', logoUpload.single('logo'), (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   if (project.logo_path) {
@@ -170,7 +173,7 @@ router.post('/:id/logo', logoUpload.single('logo'), (req, res) => {
 });
 
 router.delete('/:id/logo', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (project.logo_path) {
     const p = path.join(__dirname, '..', '..', project.logo_path);
@@ -181,7 +184,7 @@ router.delete('/:id/logo', (req, res) => {
 });
 
 router.post('/:id/logo-color', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   if (!project.logo_path) return res.status(400).json({ error: 'Upload a logo first' });
   const ext = path.extname(project.logo_path).toLowerCase();
@@ -201,7 +204,7 @@ router.post('/:id/logo-color', (req, res) => {
 // ---- Scope items ----
 
 router.post('/:id/scope', (req, res) => {
-  const project = getProjectOr404(req.params.id, res);
+  const project = getProjectOr404(req.params.id, res, req.userId);
   if (!project) return;
   const { group_name, item_type, tenant, url, app_name, app_version, platform } = req.body;
   const type = item_type === 'app' ? 'app' : 'url';
@@ -224,8 +227,16 @@ router.post('/:id/scope', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM scope_items WHERE id = ?').get(id));
 });
 
+// Fetches a scope item only if its parent project belongs to the user.
+function getScopeItemOwned(scopeId, userId) {
+  return db.prepare(
+    `SELECT s.* FROM scope_items s JOIN projects p ON p.id = s.project_id
+     WHERE s.id = ? AND p.user_id = ?`
+  ).get(scopeId, userId);
+}
+
 router.put('/scope/:scopeId', (req, res) => {
-  const item = db.prepare('SELECT * FROM scope_items WHERE id = ?').get(req.params.scopeId);
+  const item = getScopeItemOwned(req.params.scopeId, req.userId);
   if (!item) return res.status(404).json({ error: 'Scope item not found' });
   const merged = { ...item, ...req.body };
   db.prepare(
@@ -237,7 +248,7 @@ router.put('/scope/:scopeId', (req, res) => {
 });
 
 router.delete('/scope/:scopeId', (req, res) => {
-  const item = db.prepare('SELECT * FROM scope_items WHERE id = ?').get(req.params.scopeId);
+  const item = getScopeItemOwned(req.params.scopeId, req.userId);
   if (!item) return res.status(404).json({ error: 'Scope item not found' });
   db.prepare('DELETE FROM scope_items WHERE id = ?').run(item.id);
   res.status(204).end();

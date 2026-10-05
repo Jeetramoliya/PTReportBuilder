@@ -77,12 +77,8 @@ const API = {
   },
   commitImport(projectId, findings) { return this.post(`/api/import/projects/${projectId}/commit`, { findings }); },
 
-  authStatus() { return this.get('/api/auth/status'); },
-  authLogin(password) { return this.post('/api/auth/login', { password }); },
+  authMe() { return this.get('/api/auth/me'); },
   authLogout() { return this.post('/api/auth/logout'); },
-  authEnable(password) { return this.post('/api/auth/enable', { password }); },
-  authChangePassword(current_password, new_password) { return this.post('/api/auth/change-password', { current_password, new_password }); },
-  authDisable(current_password) { return this.post('/api/auth/disable', { current_password }); },
 };
 
 function toast(message, isError) {

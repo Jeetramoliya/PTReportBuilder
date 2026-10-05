@@ -6,11 +6,17 @@ const { PDFParse } = require('pdf-parse');
 const { buildReportData } = require('../utils/reportData');
 const { buildDocx } = require('../utils/docxBuilder');
 const { buildMergedDocument, drawHeaderFooter, remapTocLinks } = require('../utils/pdfMerge');
+const db = require('../db');
+const { SESSION_COOKIE, parseCookies } = require('../utils/userAuth');
 
 const MARGIN_MM = { top: 20, bottom: 18, left: 10, right: 10 };
 
 const router = express.Router();
 const templatePath = path.join(__dirname, '..', 'templates', 'report.ejs');
+
+function ownsProject(id, userId) {
+  return !!db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId);
+}
 
 function normalize(s) {
   return String(s || '').replace(/\s+/g, ' ').trim();
@@ -57,6 +63,7 @@ async function buildPageNumbers(pdfBuffer, sections) {
 
 router.get('/projects/:id/report/preview', async (req, res, next) => {
   try {
+    if (!ownsProject(req.params.id, req.userId)) return res.status(404).send('Project not found');
     const data = buildReportData(req.params.id);
     if (!data) return res.status(404).send('Project not found');
     if (req.query.pn) {
@@ -79,10 +86,13 @@ router.get('/projects/:id/report/preview', async (req, res, next) => {
 router.get('/projects/:id/report/pdf', async (req, res, next) => {
   let browser;
   try {
+    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
     const data = buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/api/projects/${req.params.id}/report/preview`;
+    const sessionToken = parseCookies(req)[SESSION_COOKIE];
+    const host = req.get('host');
+    const baseUrl = `${req.protocol}://${host}/api/projects/${req.params.id}/report/preview`;
     const contentOptions = {
       format: 'A4',
       printBackground: true,
@@ -100,6 +110,13 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
 
     browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
+
+    // The internal preview URL is behind authentication, so hand Puppeteer the same
+    // session cookie the user is making this request with.
+    if (sessionToken) {
+      const hostname = host.split(':')[0];
+      await page.setCookie({ name: SESSION_COOKIE, value: sessionToken, domain: hostname, path: '/', httpOnly: true });
+    }
 
     // Pass 1: render the full document (cover + everything) purely to measure which
     // physical page each ToC-linked section lands on.
@@ -143,6 +160,7 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
 
 router.get('/projects/:id/report/docx', async (req, res, next) => {
   try {
+    if (!ownsProject(req.params.id, req.userId)) return res.status(404).json({ error: 'Project not found' });
     const data = buildReportData(req.params.id);
     if (!data) return res.status(404).json({ error: 'Project not found' });
 

@@ -1,58 +1,47 @@
 const express = require('express');
-const authStore = require('../utils/authStore');
+const auth = require('../utils/userAuth');
 
 const router = express.Router();
 
-router.get('/status', (req, res) => {
-  res.json({ enabled: authStore.isAuthEnabled() });
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+router.get('/me', (req, res) => {
+  const cookies = auth.parseCookies(req);
+  const user = auth.userForSession(cookies[auth.SESSION_COOKIE]);
+  if (!user) return res.status(401).json({ error: 'Not signed in' });
+  res.json({ user });
+});
+
+router.post('/signup', (req, res) => {
+  const email = auth.normalizeEmail(req.body.email);
+  const name = String(req.body.name || '').trim();
+  const password = req.body.password || '';
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (auth.findUserByEmail(email)) return res.status(409).json({ error: 'An account with that email already exists' });
+
+  const user = auth.createUser(email, name, password);
+  const token = auth.createSession(user.id);
+  auth.setSessionCookie(res, token);
+  res.status(201).json({ user });
 });
 
 router.post('/login', (req, res) => {
-  const { password } = req.body;
-  if (!authStore.isAuthEnabled()) return res.status(400).json({ error: 'Password protection is not enabled' });
-  if (!password || !authStore.checkPassword(password)) {
-    return res.status(401).json({ error: 'Incorrect password' });
+  const email = auth.normalizeEmail(req.body.email);
+  const password = req.body.password || '';
+  const row = auth.findUserByEmail(email);
+  if (!row || !auth.verifyPassword(password, row.password_hash)) {
+    return res.status(401).json({ error: 'Incorrect email or password' });
   }
-  const token = authStore.createSession();
-  authStore.setSessionCookie(res, token);
-  res.json({ ok: true });
+  const token = auth.createSession(row.id);
+  auth.setSessionCookie(res, token);
+  res.json({ user: { id: row.id, email: row.email, name: row.name } });
 });
 
 router.post('/logout', (req, res) => {
-  const cookies = authStore.parseCookies(req);
-  authStore.destroySession(cookies[authStore.SESSION_COOKIE]);
-  authStore.clearSessionCookie(res);
-  res.json({ ok: true });
-});
-
-// Enable password protection for the first time (no auth required to call this while disabled).
-router.post('/enable', (req, res) => {
-  if (authStore.isAuthEnabled()) return res.status(400).json({ error: 'Already enabled. Use change-password instead.' });
-  const { password } = req.body;
-  if (!password || password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
-  authStore.setPassword(password);
-  const token = authStore.createSession();
-  authStore.setSessionCookie(res, token);
-  res.json({ ok: true });
-});
-
-router.post('/change-password', (req, res) => {
-  const { current_password, new_password } = req.body;
-  if (!authStore.isAuthEnabled()) return res.status(400).json({ error: 'Password protection is not enabled' });
-  if (!authStore.checkPassword(current_password)) return res.status(401).json({ error: 'Current password is incorrect' });
-  if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'New password must be at least 4 characters' });
-  authStore.setPassword(new_password);
-  const token = authStore.createSession();
-  authStore.setSessionCookie(res, token);
-  res.json({ ok: true });
-});
-
-router.post('/disable', (req, res) => {
-  const { current_password } = req.body;
-  if (!authStore.isAuthEnabled()) return res.json({ ok: true });
-  if (!authStore.checkPassword(current_password)) return res.status(401).json({ error: 'Current password is incorrect' });
-  authStore.clearPassword();
-  authStore.clearSessionCookie(res);
+  const cookies = auth.parseCookies(req);
+  auth.destroySession(cookies[auth.SESSION_COOKIE]);
+  auth.clearSessionCookie(res);
   res.json({ ok: true });
 });
 

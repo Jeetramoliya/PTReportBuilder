@@ -1,21 +1,22 @@
-const authStore = require('../utils/authStore');
+const auth = require('../utils/userAuth');
 
-const PUBLIC_API_PATHS = ['/api/auth/status', '/api/auth/login'];
+// Pages and assets reachable without a session (so the login page can render and submit).
+const PUBLIC_API = ['/api/auth/login', '/api/auth/signup', '/api/auth/me', '/api/auth/logout'];
 const PUBLIC_PAGES = ['/login.html'];
-const PUBLIC_PREFIXES = ['/css/', '/js/']; // static assets needed to render the login page itself
+const PUBLIC_PREFIXES = ['/css/', '/js/'];
 
 module.exports = function requireAuth(req, res, next) {
-  if (!authStore.isAuthEnabled()) return next();
-
-  if (PUBLIC_API_PATHS.includes(req.path) || PUBLIC_PAGES.includes(req.path)) return next();
+  if (PUBLIC_API.includes(req.path) || PUBLIC_PAGES.includes(req.path)) return next();
   if (PUBLIC_PREFIXES.some((p) => req.path.startsWith(p))) return next();
 
-  const cookies = authStore.parseCookies(req);
-  const token = cookies[authStore.SESSION_COOKIE];
-  if (authStore.isValidSession(token)) return next();
-
-  if (req.path.startsWith('/api/')) {
-    return res.status(401).json({ error: 'Authentication required' });
+  const cookies = auth.parseCookies(req);
+  const user = auth.userForSession(cookies[auth.SESSION_COOKIE]);
+  if (user) {
+    req.user = user;
+    req.userId = user.id;
+    return next();
   }
+
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Authentication required' });
   return res.redirect('/login.html');
 };

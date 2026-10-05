@@ -32,13 +32,28 @@ function loadFindingFull(id) {
   return finding;
 }
 
-function getFindingOr404(id, res) {
-  const finding = db.prepare('SELECT * FROM findings WHERE id = ?').get(id);
+// A finding is only accessible if its project belongs to the requesting user.
+function getFindingOr404(id, res, userId) {
+  const finding = db.prepare(
+    `SELECT f.* FROM findings f JOIN projects p ON p.id = f.project_id
+     WHERE f.id = ? AND p.user_id = ?`
+  ).get(id, userId);
   if (!finding) {
     res.status(404).json({ error: 'Finding not found' });
     return null;
   }
   return finding;
+}
+
+// For sub-resources (urls, poc steps, references, retests) keyed by their own id:
+// resolve to the owning finding only if the whole chain belongs to the user.
+function ownedSubRow(table, id, userId) {
+  return db.prepare(
+    `SELECT t.* FROM ${table} t
+       JOIN findings f ON f.id = t.finding_id
+       JOIN projects p ON p.id = f.project_id
+     WHERE t.id = ? AND p.user_id = ?`
+  ).get(id, userId);
 }
 
 // ---- CVSS calculator (stateless helper) ----
@@ -53,7 +68,7 @@ router.post('/cvss/calculate', (req, res) => {
 
 // ---- Findings under a project ----
 router.post('/projects/:projectId/findings', (req, res) => {
-  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.projectId);
+  const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.projectId, req.userId);
   if (!project) return res.status(404).json({ error: 'Project not found' });
   const { title, category, scope_type, owasp_category, cwe_id, description, remediation, impact, likelihood, cvss_vector } = req.body;
   if (!title || !title.trim()) return res.status(400).json({ error: 'Finding title is required' });
@@ -90,13 +105,13 @@ router.post('/projects/:projectId/findings', (req, res) => {
 });
 
 router.get('/findings/:id', (req, res) => {
-  const finding = loadFindingFull(req.params.id);
-  if (!finding) return res.status(404).json({ error: 'Finding not found' });
-  res.json(finding);
+  const owned = getFindingOr404(req.params.id, res, req.userId);
+  if (!owned) return;
+  res.json(loadFindingFull(req.params.id));
 });
 
 router.put('/findings/:id', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
 
   const merged = { ...finding, ...req.body };
@@ -140,7 +155,7 @@ router.put('/findings/:id', (req, res) => {
 });
 
 router.delete('/findings/:id', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const steps = db.prepare('SELECT screenshot_path FROM poc_steps WHERE finding_id = ?').all(finding.id);
   for (const s of steps) {
@@ -154,7 +169,7 @@ router.delete('/findings/:id', (req, res) => {
 });
 
 router.post('/findings/:id/reorder', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const direction = req.body.direction === 'up' ? -1 : 1;
   const siblings = db
@@ -172,7 +187,7 @@ router.post('/findings/:id/reorder', (req, res) => {
 
 // ---- Retest tracking ----
 router.post('/findings/:id/retest', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const { new_status, notes, event_date } = req.body;
   if (!new_status || !new_status.trim()) return res.status(400).json({ error: 'New status is required' });
@@ -185,7 +200,7 @@ router.post('/findings/:id/retest', (req, res) => {
 });
 
 router.delete('/retest/:eventId', (req, res) => {
-  const item = db.prepare('SELECT * FROM retest_events WHERE id = ?').get(req.params.eventId);
+  const item = ownedSubRow('retest_events', req.params.eventId, req.userId);
   if (!item) return res.status(404).json({ error: 'Retest event not found' });
   db.prepare('DELETE FROM retest_events WHERE id = ?').run(item.id);
   res.json(loadFindingFull(item.finding_id));
@@ -193,7 +208,7 @@ router.delete('/retest/:eventId', (req, res) => {
 
 // ---- Affected URLs ----
 router.post('/findings/:id/urls', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const { url } = req.body;
   if (!url || !url.trim()) return res.status(400).json({ error: 'URL is required' });
@@ -204,7 +219,7 @@ router.post('/findings/:id/urls', (req, res) => {
 });
 
 router.delete('/urls/:urlId', (req, res) => {
-  const item = db.prepare('SELECT * FROM affected_urls WHERE id = ?').get(req.params.urlId);
+  const item = ownedSubRow('affected_urls', req.params.urlId, req.userId);
   if (!item) return res.status(404).json({ error: 'URL not found' });
   db.prepare('DELETE FROM affected_urls WHERE id = ?').run(item.id);
   res.json(loadFindingFull(item.finding_id));
@@ -212,7 +227,7 @@ router.delete('/urls/:urlId', (req, res) => {
 
 // ---- PoC steps (with optional screenshot) ----
 router.post('/findings/:id/poc', screenshotUpload.single('screenshot'), (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const id = nanoid();
   const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM poc_steps WHERE finding_id = ?').get(finding.id).m;
@@ -224,7 +239,7 @@ router.post('/findings/:id/poc', screenshotUpload.single('screenshot'), (req, re
 });
 
 router.put('/poc/:stepId', screenshotUpload.single('screenshot'), (req, res) => {
-  const step = db.prepare('SELECT * FROM poc_steps WHERE id = ?').get(req.params.stepId);
+  const step = ownedSubRow('poc_steps', req.params.stepId, req.userId);
   if (!step) return res.status(404).json({ error: 'Step not found' });
   let screenshotPath = step.screenshot_path;
   if (req.file) {
@@ -248,7 +263,7 @@ router.put('/poc/:stepId', screenshotUpload.single('screenshot'), (req, res) => 
 });
 
 router.delete('/poc/:stepId', (req, res) => {
-  const step = db.prepare('SELECT * FROM poc_steps WHERE id = ?').get(req.params.stepId);
+  const step = ownedSubRow('poc_steps', req.params.stepId, req.userId);
   if (!step) return res.status(404).json({ error: 'Step not found' });
   if (step.screenshot_path) {
     const p = path.join(__dirname, '..', '..', step.screenshot_path);
@@ -260,7 +275,7 @@ router.delete('/poc/:stepId', (req, res) => {
 
 // ---- References ----
 router.post('/findings/:id/references', (req, res) => {
-  const finding = getFindingOr404(req.params.id, res);
+  const finding = getFindingOr404(req.params.id, res, req.userId);
   if (!finding) return;
   const { label, url } = req.body;
   if (!url || !url.trim()) return res.status(400).json({ error: 'Reference URL is required' });
@@ -273,7 +288,7 @@ router.post('/findings/:id/references', (req, res) => {
 });
 
 router.delete('/references/:refId', (req, res) => {
-  const item = db.prepare('SELECT * FROM finding_references WHERE id = ?').get(req.params.refId);
+  const item = ownedSubRow('finding_references', req.params.refId, req.userId);
   if (!item) return res.status(404).json({ error: 'Reference not found' });
   db.prepare('DELETE FROM finding_references WHERE id = ?').run(item.id);
   res.json(loadFindingFull(item.finding_id));

@@ -62,67 +62,21 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
   }
 });
 
-// ---- Security settings ----
-const securityModal = document.getElementById('securityModal');
-
-async function openSecurityModal() {
-  // Open the modal first so the button always responds, even if the status check fails.
-  securityModal.classList.remove('hidden');
+// ---- Current user / logout ----
+(async () => {
   try {
-    const status = await API.authStatus();
-    document.getElementById('securityDisabledView').classList.toggle('hidden', status.enabled);
-    document.getElementById('securityEnabledView').classList.toggle('hidden', !status.enabled);
-  } catch (err) {
-    document.getElementById('securityDisabledView').classList.remove('hidden');
-    document.getElementById('securityEnabledView').classList.add('hidden');
-    toast('Could not reach the server — is it running?', true);
+    const { user } = await API.authMe();
+    document.getElementById('currentUser').textContent = user.name ? `${user.name} (${user.email})` : user.email;
+  } catch (e) {
+    // 401 here means the session expired; api.js leaves /api/auth/* alone, so send to login.
+    window.location.href = '/login.html';
   }
-}
+})();
 
-document.getElementById('securityLink').addEventListener('click', (e) => {
+document.getElementById('logoutLink').addEventListener('click', async (e) => {
   e.preventDefault();
-  openSecurityModal();
-});
-document.getElementById('cancelSecurity').addEventListener('click', () => securityModal.classList.add('hidden'));
-document.getElementById('cancelSecurity2').addEventListener('click', () => securityModal.classList.add('hidden'));
-securityModal.addEventListener('click', (e) => { if (e.target === securityModal) securityModal.classList.add('hidden'); });
-
-document.getElementById('enableAuthForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const password = new FormData(e.target).get('password');
-  try {
-    await API.authEnable(password);
-    toast('Password protection enabled');
-    securityModal.classList.add('hidden');
-  } catch (err) {
-    toast(err.message, true);
-  }
-});
-
-document.getElementById('changeAuthForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target).entries());
-  try {
-    await API.authChangePassword(data.current_password, data.new_password);
-    toast('Password changed');
-    e.target.reset();
-    securityModal.classList.add('hidden');
-  } catch (err) {
-    toast(err.message, true);
-  }
-});
-
-document.getElementById('disableAuthForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const current_password = new FormData(e.target).get('current_password');
-  if (!confirm('Disable password protection? Anyone with access to this app will no longer need to sign in.')) return;
-  try {
-    await API.authDisable(current_password);
-    toast('Password protection disabled');
-    securityModal.classList.add('hidden');
-  } catch (err) {
-    toast(err.message, true);
-  }
+  try { await API.authLogout(); } catch (err) { /* ignore */ }
+  window.location.href = '/login.html';
 });
 
 loadProjects();

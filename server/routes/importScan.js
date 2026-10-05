@@ -19,7 +19,7 @@ const SEVERITY_TO_IMPACT_LIKELIHOOD = {
 // Parse a scanner export and return a preview list — nothing is saved yet.
 router.post('/projects/:id/preview', upload.single('file'), (req, res, next) => {
   try {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -45,7 +45,7 @@ router.post('/projects/:id/preview', upload.single('file'), (req, res, next) => 
 // Create findings from a previously-parsed, user-confirmed selection.
 router.post('/projects/:id/commit', (req, res, next) => {
   try {
-    const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    const project = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     const items = Array.isArray(req.body.findings) ? req.body.findings : [];
     if (!items.length) return res.status(400).json({ error: 'No findings selected' });

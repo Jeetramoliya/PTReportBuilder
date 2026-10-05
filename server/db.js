@@ -9,8 +9,25 @@ const db = new DatabaseSync(path.join(dataDir, 'vapt.db'));
 db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  name TEXT DEFAULT '',
+  password_hash TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
+  user_id TEXT DEFAULT '',
   name TEXT NOT NULL,
   client_name TEXT DEFAULT '',
   client_address TEXT DEFAULT '',
@@ -145,6 +162,7 @@ ensureColumn('scope_items', 'item_type', "TEXT DEFAULT 'url'");
 ensureColumn('scope_items', 'app_name', "TEXT DEFAULT ''");
 ensureColumn('scope_items', 'app_version', "TEXT DEFAULT ''");
 ensureColumn('scope_items', 'platform', "TEXT DEFAULT ''");
+ensureColumn('projects', 'user_id', "TEXT DEFAULT ''");
 ensureColumn('findings', 'scope_type', "TEXT DEFAULT 'Web Application'");
 ensureColumn('findings', 'owasp_category', "TEXT DEFAULT ''");
 ensureColumn('findings', 'cwe_id', "TEXT DEFAULT ''");
