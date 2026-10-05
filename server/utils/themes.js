@@ -11,6 +11,7 @@ const THEMES = {
   indigo: { key: 'indigo', name: 'Indigo', brand: '#4338ca', brandDark: '#312e81', brandLight: '#e8e7fc', accent: '#6366f1' },
   forest: { key: 'forest', name: 'Forest Green', brand: '#365314', brandDark: '#1a2e05', brandLight: '#eef4e1', accent: '#65a30d' },
   bronze: { key: 'bronze', name: 'Bronze Brown', brand: '#78350f', brandDark: '#451a03', brandLight: '#f4ece1', accent: '#b45309' },
+  black: { key: 'black', name: 'Pure Black', brand: '#000000', brandDark: '#000000', brandLight: '#ededed', accent: '#000000' },
 };
 
 const COVER_STYLES = [

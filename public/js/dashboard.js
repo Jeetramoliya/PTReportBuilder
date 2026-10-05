@@ -66,10 +66,17 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
 const securityModal = document.getElementById('securityModal');
 
 async function openSecurityModal() {
-  const status = await API.authStatus();
-  document.getElementById('securityDisabledView').classList.toggle('hidden', status.enabled);
-  document.getElementById('securityEnabledView').classList.toggle('hidden', !status.enabled);
+  // Open the modal first so the button always responds, even if the status check fails.
   securityModal.classList.remove('hidden');
+  try {
+    const status = await API.authStatus();
+    document.getElementById('securityDisabledView').classList.toggle('hidden', status.enabled);
+    document.getElementById('securityEnabledView').classList.toggle('hidden', !status.enabled);
+  } catch (err) {
+    document.getElementById('securityDisabledView').classList.remove('hidden');
+    document.getElementById('securityEnabledView').classList.add('hidden');
+    toast('Could not reach the server — is it running?', true);
+  }
 }
 
 document.getElementById('securityLink').addEventListener('click', (e) => {
