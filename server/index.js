@@ -32,13 +32,17 @@ app.use('/api', require('./routes/report'));
 app.use('/api/meta', require('./routes/meta'));
 app.use('/api/export', require('./routes/export'));
 app.use('/api/import', require('./routes/importScan'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
+const { seedAdmins } = require('./utils/userAuth');
+
 db.initDb()
+  .then(() => seedAdmins())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`VAPT Report Builder running at http://localhost:${PORT}`);

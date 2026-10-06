@@ -31,6 +31,8 @@ full Chromium does not run there, so PDF export fails. Use one of the hosts belo
 | `PUPPETEER_EXECUTABLE_PATH` | Puppeteer's bundled Chromium | Path to a system Chromium (the Dockerfile sets `/usr/bin/chromium`). |
 | `RESEND_API_KEY` | — | Optional. Resend API key to enable password-reset emails. Without it, password reset is disabled (change-password while signed in still works). |
 | `MAIL_FROM` | — | Optional. Sender for reset emails, e.g. `VAPT <noreply@yourdomain.com>` (must be a Resend-verified sender). |
+| `ADMIN_EMAILS` | — | Comma-separated emails that get the admin panel (view all users + their report counts, remove users). An account is an admin purely by matching this list. |
+| `ADMIN_PASSWORD` | — | Optional. If set together with `ADMIN_EMAILS`, any missing admin accounts are seeded on boot with this password. (Otherwise just sign up with an admin email.) |
 
 ## Recommended: Render (free) + Turso (free) — no credit card
 

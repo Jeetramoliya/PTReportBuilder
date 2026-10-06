@@ -40,6 +40,20 @@ async function updatePassword(userId, newPassword) {
   await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), userId);
 }
 
+// Creates any admin accounts (ADMIN_EMAILS) that don't exist yet, using ADMIN_PASSWORD.
+// Both env vars must be set; otherwise this is a no-op (admins can just sign up normally).
+async function seedAdmins() {
+  const emails = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean);
+  const password = process.env.ADMIN_PASSWORD;
+  if (!emails.length || !password) return;
+  for (const email of emails) {
+    if (!(await findUserByEmail(email))) {
+      await createUser(email, 'Administrator', password);
+      console.log(`Seeded admin account: ${normalizeEmail(email)}`);
+    }
+  }
+}
+
 function getUserById(id) {
   return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
 }
@@ -97,6 +111,7 @@ module.exports = {
   findUserByEmail,
   getUserById,
   updatePassword,
+  seedAdmins,
   createSession,
   destroySession,
   userForSession,

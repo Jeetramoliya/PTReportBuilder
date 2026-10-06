@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script src="/js/theme.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+    <a href="/index.html">&larr; Back to Projects</a>
+  </div>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1>Admin</h1>
+        <div class="subtitle">Manage users and see activity across the whole product.</div>
+      </div>
+    </div>
+
+    <div class="grid" id="statsRow" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); margin-bottom:8px;"></div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px;">
+        <h2 style="margin:0;">Users</h2>
+        <input type="search" id="userSearch" placeholder="Search by email or name…" style="width:auto; min-width:220px;" />
+      </div>
+      <table>
+        <thead>
+          <tr><th>Email</th><th>Name</th><th>Joined</th><th>Projects</th><th>Findings</th><th></th></tr>
+        </thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+      <div id="usersEmpty" class="empty-state hidden"><p>No users.</p></div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

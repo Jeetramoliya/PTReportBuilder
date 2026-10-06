@@ -4,6 +4,7 @@ const auth = require('../utils/userAuth');
 const db = require('../db');
 const { deleteUserCascade } = require('../utils/cascade');
 const { sendMail, mailConfigured } = require('../utils/email');
+const { isAdmin } = require('../utils/admin');
 const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
@@ -19,7 +20,7 @@ router.get('/me', async (req, res, next) => {
     const cookies = auth.parseCookies(req);
     const user = await auth.userForSession(cookies[auth.SESSION_COOKIE]);
     if (!user) return res.status(401).json({ error: 'Not signed in' });
-    res.json({ user });
+    res.json({ user: { ...user, is_admin: isAdmin(user.email) } });
   } catch (e) {
     next(e);
   }

@@ -85,6 +85,9 @@ const API = {
 
   authMe() { return this.get('/api/auth/me'); },
   authLogout() { return this.post('/api/auth/logout'); },
+  adminStats() { return this.get('/api/admin/stats'); },
+  adminUsers() { return this.get('/api/admin/users'); },
+  adminDeleteUser(id) { return this.del(`/api/admin/users/${id}`); },
   deleteAccount() { return this.del('/api/auth/account'); },
 };
 

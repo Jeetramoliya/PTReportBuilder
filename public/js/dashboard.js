@@ -123,6 +123,7 @@ document.getElementById('projectSort').addEventListener('change', renderProjects
   try {
     const { user } = await API.authMe();
     document.getElementById('currentUser').textContent = user.name ? `${user.name} (${user.email})` : user.email;
+    if (user.is_admin) document.getElementById('adminLink').classList.remove('hidden');
   } catch (e) {
     // 401 here means the session expired; api.js leaves /api/auth/* alone, so send to login.
     window.location.href = '/login.html';
