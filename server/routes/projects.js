@@ -7,7 +7,7 @@ const { saveUpload, getUpload, deleteUpload } = require('../uploads');
 const { THEMES, COVER_STYLES, PAGE_BACKGROUNDS, HEADER_FOOTER_STYLES, COVER_ALIGNMENTS, WORDMARK_STYLES } = require('../utils/themes');
 const { FONTS } = require('../utils/fonts');
 const { extractDominantColor } = require('../utils/logoColor');
-const { deleteProjectCascade } = require('../utils/cascade');
+const { deleteProjectCascade, cloneProject } = require('../utils/cascade');
 const { coerceProjectField, SKIP, clampStr } = require('../utils/validate');
 
 const router = express.Router();
@@ -172,6 +172,17 @@ router.delete('/:id', async (req, res, next) => {
     if (!project) return;
     await deleteProjectCascade(project.id);
     res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/clone', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    const newId = await cloneProject(project.id, req.userId);
+    res.status(201).json(await db.prepare('SELECT * FROM projects WHERE id = ?').get(newId));
   } catch (e) {
     next(e);
   }

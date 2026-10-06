@@ -34,6 +34,7 @@ const API = {
   getProject(id) { return this.get(`/api/projects/${id}`); },
   updateProject(id, data) { return this.put(`/api/projects/${id}`, data); },
   deleteProject(id) { return this.del(`/api/projects/${id}`); },
+  cloneProject(id) { return this.post(`/api/projects/${id}/clone`); },
   uploadLogo(id, file) {
     const fd = new FormData();
     fd.append('logo', file);

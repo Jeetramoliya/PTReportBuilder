@@ -152,7 +152,11 @@
         </div>
         <div class="form-row">
           <label>Screenshot (optional)</label>
-          <input type="file" name="screenshot" accept="image/png,image/jpeg,image/webp,image/gif" />
+          <div id="pocDrop" class="dropzone">
+            <input type="file" name="screenshot" accept="image/png,image/jpeg,image/webp,image/gif" />
+            <div class="dropzone-hint">Drag &amp; drop, click to choose, or paste from the clipboard (Ctrl+V / Win+Shift+S &rarr; paste).</div>
+            <img id="pocPreview" class="screenshot-thumb hidden" />
+          </div>
         </div>
         <button type="submit" class="btn">Add Step</button>
       </form>

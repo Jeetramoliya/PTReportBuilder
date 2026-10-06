@@ -30,6 +30,7 @@ async function loadProjects() {
       <div class="meta">${p.finding_count} finding(s) &middot; updated ${new Date(p.updated_at).toLocaleDateString()}</div>
       <div class="actions">
         <a class="btn small" href="/project.html?id=${p.id}">Open</a>
+        <button class="btn small secondary" data-id="${p.id}" data-action="clone" data-tip="Duplicate this project, branding and all findings">Duplicate</button>
         <button class="btn small danger" data-id="${p.id}" data-action="delete">Delete</button>
       </div>
     `;
@@ -44,6 +45,19 @@ async function loadProjects() {
         loadProjects();
       } catch (e) {
         toast(e.message, true);
+      }
+    });
+  });
+  grid.querySelectorAll('[data-action="clone"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await API.cloneProject(btn.dataset.id);
+        toast('Project duplicated');
+        loadProjects();
+      } catch (e) {
+        toast(e.message, true);
+        btn.disabled = false;
       }
     });
   });

@@ -174,12 +174,52 @@ function renderPoc(steps) {
   });
 }
 
+// ---- PoC screenshot: file / drag-drop / clipboard paste ----
+const pocFileInput = document.querySelector('#pocForm input[name=screenshot]');
+const pocPreview = document.getElementById('pocPreview');
+const pocDrop = document.getElementById('pocDrop');
+
+function showPocPreview(file) {
+  if (file && /^image\//.test(file.type)) { pocPreview.src = URL.createObjectURL(file); pocPreview.classList.remove('hidden'); }
+}
+function attachPocFile(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const dt = new DataTransfer(); dt.items.add(file); pocFileInput.files = dt.files; // put it where the form submit reads it
+  showPocPreview(file);
+}
+pocFileInput.addEventListener('change', () => showPocPreview(pocFileInput.files[0]));
+
+['dragenter', 'dragover'].forEach((ev) => pocDrop.addEventListener(ev, (e) => { e.preventDefault(); pocDrop.classList.add('dragover'); }));
+['dragleave', 'drop'].forEach((ev) => pocDrop.addEventListener(ev, (e) => {
+  e.preventDefault(); if (ev === 'dragleave' && pocDrop.contains(e.relatedTarget)) return; pocDrop.classList.remove('dragover');
+}));
+pocDrop.addEventListener('drop', (e) => attachPocFile(e.dataTransfer.files[0]));
+
+// Paste an image anywhere on the page to attach it to the step being written.
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      const blob = it.getAsFile();
+      if (blob) {
+        const ext = (blob.type.split('/')[1] || 'png');
+        attachPocFile(new File([blob], `pasted-${Date.now()}.${ext}`, { type: blob.type }));
+        toast('Screenshot attached from clipboard');
+        e.preventDefault();
+      }
+      break;
+    }
+  }
+});
+
 document.getElementById('pocForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
   try {
     await API.addPoc(findingId, fd);
     e.target.reset();
+    pocPreview.classList.add('hidden');
     loadFinding();
   } catch (err) {
     toast(err.message, true);

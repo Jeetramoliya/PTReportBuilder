@@ -8,11 +8,18 @@
 # Ships a system Chromium so Puppeteer (PDF export) works without downloading its own.
 FROM node:22-bookworm-slim
 
-# Chromium + the fonts/libs it needs to render PDFs headlessly.
+# Chromium + a broad set of fonts so the report's font choices render faithfully in the PDF.
+# urw-base35 covers Times/Helvetica/Palatino/Century-style faces; carlito/caladea are
+# metric-compatible with Calibri/Cambria; liberation2 + dejavu + noto cover the rest.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       chromium \
       fonts-liberation \
+      fonts-liberation2 \
       fonts-dejavu-core \
+      fonts-urw-base35 \
+      fonts-crosextra-carlito \
+      fonts-crosextra-caladea \
+      fonts-noto-core \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
