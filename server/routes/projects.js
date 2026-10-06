@@ -7,6 +7,7 @@ const { saveUpload, getUpload, deleteUpload } = require('../uploads');
 const { THEMES, COVER_STYLES, PAGE_BACKGROUNDS, HEADER_FOOTER_STYLES, COVER_ALIGNMENTS, WORDMARK_STYLES } = require('../utils/themes');
 const { FONTS } = require('../utils/fonts');
 const { extractDominantColor } = require('../utils/logoColor');
+const { deleteProjectCascade } = require('../utils/cascade');
 
 const router = express.Router();
 
@@ -161,21 +162,7 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const project = await getProjectOr404(req.params.id, res, req.userId);
     if (!project) return;
-
-    // Manual cascade (no DB-level foreign keys so this works on both backends).
-    const findings = await db.prepare('SELECT id FROM findings WHERE project_id = ?').all(project.id);
-    for (const f of findings) {
-      const steps = await db.prepare('SELECT screenshot_path FROM poc_steps WHERE finding_id = ?').all(f.id);
-      for (const s of steps) if (s.screenshot_path) await deleteUpload(s.screenshot_path);
-      await db.prepare('DELETE FROM affected_urls WHERE finding_id = ?').run(f.id);
-      await db.prepare('DELETE FROM poc_steps WHERE finding_id = ?').run(f.id);
-      await db.prepare('DELETE FROM finding_references WHERE finding_id = ?').run(f.id);
-      await db.prepare('DELETE FROM retest_events WHERE finding_id = ?').run(f.id);
-    }
-    await db.prepare('DELETE FROM findings WHERE project_id = ?').run(project.id);
-    await db.prepare('DELETE FROM scope_items WHERE project_id = ?').run(project.id);
-    if (project.logo_path) await deleteUpload(project.logo_path);
-    await db.prepare('DELETE FROM projects WHERE id = ?').run(project.id);
+    await deleteProjectCascade(project.id);
     res.status(204).end();
   } catch (e) {
     next(e);

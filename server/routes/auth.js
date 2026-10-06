@@ -1,5 +1,6 @@
 const express = require('express');
 const auth = require('../utils/userAuth');
+const { deleteUserCascade } = require('../utils/cascade');
 
 const router = express.Router();
 
@@ -45,6 +46,21 @@ router.post('/login', async (req, res, next) => {
     const token = await auth.createSession(row.id);
     auth.setSessionCookie(res, token);
     res.json({ user: { id: row.id, email: row.email, name: row.name } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Permanently delete the signed-in user and all their data. This router is mounted before
+// requireAuth, so it resolves the session itself (like /me).
+router.delete('/account', async (req, res, next) => {
+  try {
+    const cookies = auth.parseCookies(req);
+    const user = await auth.userForSession(cookies[auth.SESSION_COOKIE]);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    await deleteUserCascade(user.id);
+    auth.clearSessionCookie(res);
+    res.status(204).end();
   } catch (e) {
     next(e);
   }

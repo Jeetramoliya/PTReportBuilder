@@ -28,6 +28,17 @@
     <div id="emptyState" class="empty-state hidden">
       <p>No projects yet. Create your first pentest project to get started.</p>
     </div>
+
+    <div class="card" style="margin-top:40px; border-color:#eab8b8;">
+      <h2 style="color:var(--high);">Danger Zone</h2>
+      <div class="row between wrap" style="gap:12px;">
+        <div class="helptext" style="margin:0; max-width:620px;">
+          Permanently delete your account and <strong>all</strong> your projects, findings and uploaded
+          evidence. This cannot be undone.
+        </div>
+        <button class="btn danger" id="deleteAccountBtn" data-tip="Permanently removes your account and every project — no recovery">Delete My Account</button>
+      </div>
+    </div>
   </div>
 
   <div class="modal-backdrop hidden" id="newProjectModal">

@@ -79,6 +79,7 @@ const API = {
 
   authMe() { return this.get('/api/auth/me'); },
   authLogout() { return this.post('/api/auth/logout'); },
+  deleteAccount() { return this.del('/api/auth/account'); },
 };
 
 function toast(message, isError) {

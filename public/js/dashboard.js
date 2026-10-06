@@ -79,4 +79,16 @@ document.getElementById('logoutLink').addEventListener('click', async (e) => {
   window.location.href = '/login.html';
 });
 
+document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+  // Irreversible: require typing DELETE so it can't be a stray click.
+  if (prompt('This permanently deletes your account and ALL projects. Type DELETE to confirm:') !== 'DELETE') return;
+  try {
+    await API.deleteAccount();
+    alert('Your account has been deleted.');
+    window.location.href = '/login.html';
+  } catch (e) {
+    toast(e.message, true);
+  }
+});
+
 loadProjects();
