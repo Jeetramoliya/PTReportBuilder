@@ -6,6 +6,7 @@ const db = require('../db');
 const cvss = require('../utils/cvss');
 const { riskFromLikelihoodImpact } = require('../utils/riskMatrix');
 const { saveUpload, deleteUpload } = require('../uploads');
+const { validateFinding, SEVERITIES } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -67,19 +68,20 @@ router.post('/projects/:projectId/findings', async (req, res, next) => {
   try {
     const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.projectId, req.userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    const { title, category, scope_type, owasp_category, cwe_id, description, remediation, impact, likelihood, cvss_vector } = req.body;
-    if (!title || !title.trim()) return res.status(400).json({ error: 'Finding title is required' });
+    const v = validateFinding(req.body);
+    const { title, category, scope_type, owasp_category, cwe_id, description, remediation } = v;
+    if (!title) return res.status(400).json({ error: 'Finding title is required' });
 
     const countRow = await db.prepare('SELECT COUNT(*) as c FROM findings WHERE project_id = ?').get(project.id);
     const seq = countRow.c + 1;
     const identifier = `${project.finding_prefix || 'WEB'}-${seq}`;
 
-    const imp = impact || 'Medium';
-    const lik = likelihood || 'Medium';
+    const imp = v.impact;
+    const lik = v.likelihood;
     const risk = riskFromLikelihoodImpact(lik, imp);
 
     let cvssScore = 0;
-    let cvssVector = cvss_vector || '';
+    let cvssVector = v.cvss_vector;
     let severity = risk;
     if (cvssVector) {
       const c = cvss.calculate(cvssVector);
@@ -119,22 +121,26 @@ router.put('/findings/:id', async (req, res, next) => {
     const finding = await getFindingOr404(req.params.id, res, req.userId);
     if (!finding) return;
 
-    const merged = { ...finding, ...req.body };
+    // Validate/clamp against the existing finding; title must not be blanked out.
+    const v = validateFinding({ ...finding, ...req.body }, finding);
+    if (!v.title) return res.status(400).json({ error: 'Finding title is required' });
 
-    const impact = merged.impact || finding.impact;
-    const likelihood = merged.likelihood || finding.likelihood;
+    const impact = v.impact;
+    const likelihood = v.likelihood;
     const risk = riskFromLikelihoodImpact(likelihood, impact);
 
+    // Only an explicitly-sent severity pins the value; otherwise derive from risk/CVSS.
+    const explicitSeverity = SEVERITIES.includes(req.body.severity) ? req.body.severity : undefined;
     let cvssScore = finding.cvss_score;
-    let cvssVector = merged.cvss_vector ?? finding.cvss_vector;
-    let severity = merged.severity || risk;
+    let cvssVector = v.cvss_vector;
+    let severity = explicitSeverity || risk;
 
     if (cvssVector) {
       try {
         const c = cvss.calculate(cvssVector);
         cvssScore = c.score;
         cvssVector = c.vector;
-        if (!req.body.severity) severity = c.severity === 'None' ? risk : c.severity;
+        if (!explicitSeverity) severity = c.severity === 'None' ? risk : c.severity;
       } catch (e) {
         // keep previous score if vector invalid
       }
@@ -142,7 +148,7 @@ router.put('/findings/:id', async (req, res, next) => {
       cvssScore = 0;
     }
 
-    const identifier = (req.body.identifier && req.body.identifier.trim()) || finding.identifier;
+    const identifier = v.identifier || finding.identifier;
 
     await db.prepare(
       `UPDATE findings SET identifier = ?, title = ?, category = ?, scope_type = ?, owasp_category = ?, cwe_id = ?, description = ?, remediation = ?, status = ?,
@@ -150,7 +156,7 @@ router.put('/findings/:id', async (req, res, next) => {
         updated_at = datetime('now')
        WHERE id = ?`
     ).run(
-      identifier, merged.title, merged.category, merged.scope_type, merged.owasp_category, merged.cwe_id, merged.description, merged.remediation, merged.status,
+      identifier, v.title, v.category, v.scope_type, v.owasp_category, v.cwe_id, v.description, v.remediation, v.status,
       impact, likelihood, risk, severity, cvssVector, cvssScore, finding.id
     );
 

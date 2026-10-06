@@ -14,6 +14,29 @@ const MARGIN_MM = { top: 20, bottom: 18, left: 10, right: 10 };
 const router = express.Router();
 const templatePath = path.join(__dirname, '..', 'templates', 'report.ejs');
 
+// A single warm Chromium reused across PDF requests (launching one per request is slow,
+// especially on small free-tier instances). If it dies (crash/OOM) we drop it and the next
+// request relaunches. --disable-dev-shm-usage avoids crashes on containers with a tiny /dev/shm.
+let browserPromise = null;
+function launchBrowser() {
+  const p = puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+  });
+  p.then((b) => b.on('disconnected', () => { if (browserPromise === p) browserPromise = null; }))
+   .catch(() => { if (browserPromise === p) browserPromise = null; });
+  return p;
+}
+async function getBrowser() {
+  if (!browserPromise) browserPromise = launchBrowser();
+  let browser;
+  try { browser = await browserPromise; } catch (e) { browserPromise = null; throw e; }
+  const connected = typeof browser.isConnected === 'function' ? browser.isConnected() : browser.connected !== false;
+  if (!connected) { browserPromise = launchBrowser(); browser = await browserPromise; }
+  return browser;
+}
+
 async function ownsProject(id, userId) {
   return !!(await db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId));
 }
@@ -84,7 +107,7 @@ router.get('/projects/:id/report/preview', async (req, res, next) => {
 });
 
 router.get('/projects/:id/report/pdf', async (req, res, next) => {
-  let browser;
+  let page;
   try {
     if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
     const data = await buildReportData(req.params.id);
@@ -108,14 +131,8 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
 
     const sections = tocSections(data);
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      // On a container that ships its own Chromium, point at it via env; otherwise
-      // Puppeteer uses the browser it downloaded during `npm install`.
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    });
-    const page = await browser.newPage();
+    const browser = await getBrowser();
+    page = await browser.newPage();
 
     // The internal preview URL is behind authentication, so hand Puppeteer the same
     // session cookie the user is making this request with.
@@ -142,9 +159,6 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
     await page.goto(`${baseUrl}?mode=rest&${pnParam}`, { waitUntil: 'networkidle0', timeout: 60000 });
     const restBuffer = await page.pdf(contentOptions);
 
-    await browser.close();
-    browser = null;
-
     const merged = await buildMergedDocument(coverBuffer, restBuffer);
     // Draw full-bleed header/footer bars on the content pages only: skip the cover
     // (index 0) and the Table of Contents (index 1) so they stay clean, and so the first
@@ -159,8 +173,9 @@ router.get('/projects/:id/report/pdf', async (req, res, next) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(Buffer.from(pdfBuffer));
   } catch (e) {
-    if (browser) await browser.close().catch(() => {});
     next(e);
+  } finally {
+    if (page) await page.close().catch(() => {});
   }
 });
 

@@ -1,8 +1,13 @@
 const express = require('express');
 const auth = require('../utils/userAuth');
 const { deleteUserCascade } = require('../utils/cascade');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
+
+// Brute-force protection on credential endpoints.
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });   // 20 / 15 min per IP
+const signupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10 });  // 10 / hour per IP
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,7 +22,7 @@ router.get('/me', async (req, res, next) => {
   }
 });
 
-router.post('/signup', async (req, res, next) => {
+router.post('/signup', signupLimiter, async (req, res, next) => {
   try {
     const email = auth.normalizeEmail(req.body.email);
     const name = String(req.body.name || '').trim();
@@ -35,7 +40,7 @@ router.post('/signup', async (req, res, next) => {
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
   try {
     const email = auth.normalizeEmail(req.body.email);
     const password = req.body.password || '';
@@ -52,7 +57,7 @@ router.post('/login', async (req, res, next) => {
 });
 
 // Change the signed-in user's password (requires the current one). Self-authenticating.
-router.post('/change-password', async (req, res, next) => {
+router.post('/change-password', loginLimiter, async (req, res, next) => {
   try {
     const cookies = auth.parseCookies(req);
     const user = await auth.userForSession(cookies[auth.SESSION_COOKIE]);

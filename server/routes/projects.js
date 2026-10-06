@@ -8,6 +8,7 @@ const { THEMES, COVER_STYLES, PAGE_BACKGROUNDS, HEADER_FOOTER_STYLES, COVER_ALIG
 const { FONTS } = require('../utils/fonts');
 const { extractDominantColor } = require('../utils/logoColor');
 const { deleteProjectCascade } = require('../utils/cascade');
+const { coerceProjectField, SKIP, clampStr } = require('../utils/validate');
 
 const router = express.Router();
 
@@ -64,8 +65,9 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { name, client_name, client_address, client_website, report_title, report_subtitle, iteration_label, assessment_date, tester_name, prepared_by_org, tagline, finding_prefix, theme, cover_style } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: 'Project name is required' });
+    const { client_name, client_address, client_website, report_title, report_subtitle, iteration_label, assessment_date, tester_name, prepared_by_org, tagline, finding_prefix, theme, cover_style } = req.body;
+    const name = clampStr(req.body.name, 300).trim();
+    if (!name) return res.status(400).json({ error: 'Project name is required' });
     const id = nanoid();
     const defaultMethodology = `Security team tested the application in the role of an authenticated user. Application security tests are modeled along the methodologies specified by the Open Web Application Security Project (OWASP), covering:
 - Complete review of application architecture and inadequate input sanitization
@@ -136,10 +138,11 @@ router.put('/:id', async (req, res, next) => {
     const updates = [];
     const values = [];
     for (const f of fields) {
-      if (req.body[f] !== undefined) {
-        updates.push(`${f} = ?`);
-        values.push(req.body[f]);
-      }
+      if (req.body[f] === undefined) continue;
+      const val = coerceProjectField(f, req.body[f]);
+      if (val === SKIP) continue; // invalid enum / malformed colour → leave unchanged
+      updates.push(`${f} = ?`);
+      values.push(val);
     }
     if (updates.length) {
       updates.push("updated_at = datetime('now')");
