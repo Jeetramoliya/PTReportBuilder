@@ -14,7 +14,103 @@
   mode = mode === 'light' ? 'light' : 'dark';
   document.documentElement.dataset.theme = mode;
 
+  // Favicon = BlackRoot mark.
+  try {
+    const fav = document.createElement('link');
+    fav.rel = 'icon';
+    fav.type = 'image/svg+xml';
+    fav.href = '/img/blackroot.svg';
+    document.head.appendChild(fav);
+  } catch (e) { /* ignore */ }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Viewport-aware tooltip: a single floating bubble that flips above/below and clamps to the
+  // screen edges, so it's never clipped (which the pure-CSS version was, near edges/overflow).
+  function initTooltips() {
+    let tip = null;
+    let tipFor = null;
+    const hide = () => { if (tip) { tip.remove(); tip = null; tipFor = null; } };
+    const place = (el) => {
+      const r = el.getBoundingClientRect();
+      const tr = tip.getBoundingClientRect();
+      let top = r.top - tr.height - 8;
+      if (top < 6) top = r.bottom + 8;                         // flip below if no room above
+      let left = r.left + r.width / 2 - tr.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tr.width - 8)); // clamp horizontally
+      tip.style.top = `${Math.round(top)}px`;
+      tip.style.left = `${Math.round(left)}px`;
+    };
+    document.addEventListener('mouseover', (e) => {
+      const el = e.target.closest('[data-tip]');
+      if (!el || el === tipFor) return;
+      hide();
+      const text = el.getAttribute('data-tip');
+      if (!text) return;
+      tipFor = el;
+      tip = document.createElement('div');
+      tip.className = 'tip-bubble';
+      tip.textContent = text;
+      document.body.appendChild(tip);
+      place(el);
+      requestAnimationFrame(() => { if (tip) tip.classList.add('show'); });
+    });
+    document.addEventListener('mouseout', (e) => {
+      const el = e.target.closest('[data-tip]');
+      if (el && el === tipFor) hide();
+    });
+    document.addEventListener('mousedown', hide, true);
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+  }
+
+  // Profile menu in the top bar (name, email, role, admin link, logout). Injected into a
+  // `.topbar-right` container; skipped on pages where the user isn't signed in (e.g. login).
+  async function buildProfile() {
+    const right = document.querySelector('.topbar-right');
+    if (!right || right.querySelector('.topbar-profile')) return;
+    let me;
+    try { const r = await fetch('/api/auth/me'); if (r.ok) me = (await r.json()).user; } catch (e) { /* not signed in */ }
+    if (!me) return;
+    const nameOrEmail = me.name || me.email;
+    const initials = (String(nameOrEmail).trim().split(/\s+/).map((s) => s[0]).slice(0, 2).join('') || '?').toUpperCase();
+    const role = me.is_admin ? 'Admin' : 'User';
+    const dd = document.createElement('div');
+    dd.className = 'dropdown topbar-profile';
+    dd.innerHTML =
+      `<button type="button" class="profile-btn">
+         <span class="profile-avatar">${esc(initials)}</span>
+         <span class="profile-name">${esc(nameOrEmail)}</span>
+         <span class="profile-caret">▾</span>
+       </button>
+       <div class="dropdown-menu hidden">
+         <div class="profile-head">
+           <div class="profile-name-full">${esc(me.name || '—')}</div>
+           <div class="profile-email">${esc(me.email)}</div>
+           <div style="margin-top:7px;"><span class="badge ${me.is_admin ? 'badge-info' : 'badge-outline'}">${role}</span></div>
+         </div>
+         <hr class="section-divider" style="margin:8px 0;">
+         ${me.is_admin ? '<a href="/admin.html">Admin Panel</a>' : ''}
+         <a href="/index.html">My Projects</a>
+         <a href="#" class="profile-logout">Log out</a>
+       </div>`;
+    right.appendChild(dd);
+    const btn = dd.querySelector('.profile-btn');
+    const menu = dd.querySelector('.dropdown-menu');
+    btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
+    document.addEventListener('click', () => menu.classList.add('hidden'));
+    dd.querySelector('.profile-logout').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (_) { /* ignore */ }
+      window.location.href = '/login.html';
+    });
+  }
+
   function build() {
+    initTooltips();
+    buildProfile();
     if (document.querySelector('.accent-picker')) return;
     const picker = document.createElement('div');
     picker.className = 'accent-picker';

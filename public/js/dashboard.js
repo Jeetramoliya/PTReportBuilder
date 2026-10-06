@@ -118,23 +118,16 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
 document.getElementById('projectSearch').addEventListener('input', renderProjects);
 document.getElementById('projectSort').addEventListener('change', renderProjects);
 
-// ---- Current user / logout ----
+// Reveal the Admin Panel card for admins (the profile menu, injected by theme.js, handles
+// the user info + logout). The page itself is already auth-guarded server-side.
 (async () => {
   try {
     const { user } = await API.authMe();
-    document.getElementById('currentUser').textContent = user.name ? `${user.name} (${user.email})` : user.email;
-    if (user.is_admin) document.getElementById('adminLink').classList.remove('hidden');
+    if (user.is_admin) document.getElementById('adminHomeCard').classList.remove('hidden');
   } catch (e) {
-    // 401 here means the session expired; api.js leaves /api/auth/* alone, so send to login.
     window.location.href = '/login.html';
   }
 })();
-
-document.getElementById('logoutLink').addEventListener('click', async (e) => {
-  e.preventDefault();
-  try { await API.authLogout(); } catch (err) { /* ignore */ }
-  window.location.href = '/login.html';
-});
 
 // Esc closes the open modal; a CTA button in the empty state opens the New Project modal.
 document.addEventListener('keydown', (e) => {
