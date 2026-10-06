@@ -4,9 +4,15 @@ const auth = require('../utils/userAuth');
 const requireAdmin = require('../middleware/requireAdmin');
 const { deleteUserCascade } = require('../utils/cascade');
 const { isEnvAdmin } = require('../utils/admin');
+const { logAudit, recentAudit } = require('../utils/audit');
 
 const router = express.Router();
 router.use(requireAdmin);
+
+// Recent admin/security actions.
+router.get('/audit', async (req, res, next) => {
+  try { res.json(await recentAudit(150)); } catch (e) { next(e); }
+});
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -47,6 +53,7 @@ router.post('/users', async (req, res, next) => {
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     if (await auth.findUserByEmail(email)) return res.status(409).json({ error: 'An account with that email already exists' });
     const user = await auth.createUser(email, name, password, { isAdmin: !!req.body.is_admin });
+    logAudit(req.user, 'user.create', `${email}${req.body.is_admin ? ' (admin)' : ''}`);
     res.status(201).json({ id: user.id, email: user.email });
   } catch (e) { next(e); }
 });
@@ -60,6 +67,7 @@ router.patch('/users/:id/admin', async (req, res, next) => {
     if (isEnvAdmin(target.email)) return res.status(400).json({ error: 'Owner admin accounts cannot be changed here.' });
     if (target.id === req.user.id) return res.status(400).json({ error: "You can't change your own admin status." });
     await auth.setAdmin(target.id, !!req.body.is_admin);
+    logAudit(req.user, req.body.is_admin ? 'user.promote' : 'user.demote', target.email);
     res.json({ ok: true, is_admin: !!req.body.is_admin });
   } catch (e) { next(e); }
 });
@@ -72,6 +80,7 @@ router.delete('/users/:id', async (req, res, next) => {
     if (isEnvAdmin(target.email)) return res.status(400).json({ error: 'Owner admin accounts cannot be removed here.' });
     if (target.id === req.user.id) return res.status(400).json({ error: "You can't remove your own account here." });
     await deleteUserCascade(target.id);
+    logAudit(req.user, 'user.delete', target.email);
     res.status(204).end();
   } catch (e) { next(e); }
 });

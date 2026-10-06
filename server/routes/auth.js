@@ -5,9 +5,17 @@ const db = require('../db');
 const { deleteUserCascade } = require('../utils/cascade');
 const { sendMail, mailConfigured } = require('../utils/email');
 const { isAdminUser } = require('../utils/admin');
+const totp = require('../utils/totp');
+const { logAudit } = require('../utils/audit');
+const QRCode = require('qrcode');
 const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
+
+// This router is mounted before requireAuth, so routes resolve the session themselves.
+function sessionToken(req) { return auth.parseCookies(req)[auth.SESSION_COOKIE]; }
+function currentUser(req) { return auth.userForSession(sessionToken(req)); }
+function sessionMeta(req) { return { ua: req.get('user-agent'), ip: req.ip }; }
 
 // Brute-force protection on credential endpoints.
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });   // 20 / 15 min per IP
@@ -36,7 +44,7 @@ router.post('/signup', signupLimiter, async (req, res, next) => {
     if (await auth.findUserByEmail(email)) return res.status(409).json({ error: 'An account with that email already exists' });
 
     const user = await auth.createUser(email, name, password);
-    const token = await auth.createSession(user.id);
+    const token = await auth.createSession(user.id, sessionMeta(req));
     auth.setSessionCookie(res, token);
     res.status(201).json({ user });
   } catch (e) {
@@ -52,7 +60,13 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     if (!row || !auth.verifyPassword(password, row.password_hash)) {
       return res.status(401).json({ error: 'Incorrect email or password' });
     }
-    const token = await auth.createSession(row.id);
+    // Second factor, if the account has 2FA enabled.
+    if (row.totp_secret) {
+      const code = req.body.totp;
+      if (!code) return res.status(401).json({ error: 'Authentication code required', totp_required: true });
+      if (!totp.verifyTotp(row.totp_secret, code)) return res.status(401).json({ error: 'Invalid authentication code', totp_required: true });
+    }
+    const token = await auth.createSession(row.id, sessionMeta(req));
     auth.setSessionCookie(res, token);
     res.json({ user: { id: row.id, email: row.email, name: row.name } });
   } catch (e) {
@@ -115,10 +129,77 @@ router.post('/change-password', loginLimiter, async (req, res, next) => {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
     await auth.updatePassword(user.id, newPassword);
+    await auth.revokeOtherSessions(user.id, sessionToken(req)); // log out other devices
     res.json({ ok: true });
   } catch (e) {
     next(e);
   }
+});
+
+// --- Two-factor auth (TOTP) ---
+router.post('/2fa/setup', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const secret = totp.generateSecret();
+    await auth.setTotpPending(user.id, secret);
+    const otpauth = totp.otpauthUrl(secret, user.email);
+    res.json({ secret, otpauth, qr: await QRCode.toDataURL(otpauth) });
+  } catch (e) { next(e); }
+});
+
+router.post('/2fa/enable', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const { totp_pending } = await auth.getSecrets(user.id);
+    if (!totp_pending) return res.status(400).json({ error: 'Start 2FA setup first.' });
+    if (!totp.verifyTotp(totp_pending, req.body.code)) return res.status(400).json({ error: 'Invalid code — try again.' });
+    await auth.enableTotp(user.id);
+    logAudit(user, '2fa.enable', user.email);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+router.post('/2fa/disable', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const row = await auth.findUserByEmail(user.email);
+    const okPw = req.body.password && auth.verifyPassword(req.body.password, row.password_hash);
+    const okCode = row.totp_secret && totp.verifyTotp(row.totp_secret, req.body.code);
+    if (!okPw && !okCode) return res.status(401).json({ error: 'Enter your password or a current code to disable 2FA.' });
+    await auth.disableTotp(user.id);
+    logAudit(user, '2fa.disable', user.email);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// --- Active sessions ---
+router.get('/sessions', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    res.json(await auth.listSessions(user.id, sessionToken(req)));
+  } catch (e) { next(e); }
+});
+
+router.delete('/sessions/:id', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    await auth.revokeSession(user.id, req.params.id, sessionToken(req));
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+router.post('/sessions/revoke-others', async (req, res, next) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    await auth.revokeOtherSessions(user.id, sessionToken(req));
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 
 // Permanently delete the signed-in user and all their data. This router is mounted before

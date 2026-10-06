@@ -20,12 +20,18 @@ document.querySelectorAll('[data-auth-tab]').forEach((btn) => {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target).entries());
-  try {
-    await API.post('/api/auth/login', data);
-    window.location.href = '/index.html';
-  } catch (err) {
-    toast(err.message, true);
+  // Raw fetch so we can read the totp_required flag (API.post only surfaces the message).
+  const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) { window.location.href = '/index.html'; return; }
+  if (body.totp_required) {
+    const row = document.getElementById('totpRow');
+    row.classList.remove('hidden');
+    row.querySelector('input').focus();
+    if (data.totp) toast(body.error || 'Invalid code', true); // only nag once they've tried a code
+    return;
   }
+  toast(body.error || 'Sign in failed', true);
 });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

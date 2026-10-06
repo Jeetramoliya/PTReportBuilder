@@ -66,12 +66,25 @@ const SCHEMA = [
     name TEXT DEFAULT '',
     password_hash TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
+    plan TEXT DEFAULT 'free',
+    totp_secret TEXT DEFAULT '',
+    totp_pending TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_sessions (
     token TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    user_agent TEXT DEFAULT '',
+    ip TEXT DEFAULT '',
     expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS audit_log (
+    id TEXT PRIMARY KEY,
+    actor_id TEXT DEFAULT '',
+    actor_email TEXT DEFAULT '',
+    action TEXT DEFAULT '',
+    detail TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS projects (
@@ -208,6 +221,11 @@ const SCHEMA = [
 const MIGRATIONS = [
   "ALTER TABLE projects ADD COLUMN share_token TEXT DEFAULT ''",
   'ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0',
+  "ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'",
+  "ALTER TABLE users ADD COLUMN totp_secret TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN totp_pending TEXT DEFAULT ''",
+  "ALTER TABLE user_sessions ADD COLUMN user_agent TEXT DEFAULT ''",
+  "ALTER TABLE user_sessions ADD COLUMN ip TEXT DEFAULT ''",
 ];
 
 async function initDb() {

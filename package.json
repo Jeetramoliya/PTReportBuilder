@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "smoke": "node scripts/smoke.js",
+    "test": "node server/utils/totp.js && node scripts/smoke.js"
   },
   "engines": {
     "node": ">=22.5.0"
@@ -25,6 +27,7 @@
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pngjs": "^7.0.0",
-    "puppeteer": "^24.15.0"
+    "puppeteer": "^24.15.0",
+    "qrcode": "^1.5.4"
   }
 }

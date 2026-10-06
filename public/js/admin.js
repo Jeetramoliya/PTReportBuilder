@@ -70,10 +70,27 @@ function renderUsers() {
   });
 }
 
+async function loadAudit() {
+  const body = document.getElementById('auditBody');
+  if (!body) return;
+  try {
+    const rows = await API.adminAudit();
+    document.getElementById('auditEmpty').classList.toggle('hidden', rows.length > 0);
+    body.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${r.created_at ? new Date(r.created_at.replace(' ', 'T') + 'Z').toLocaleString() : '—'}</td>
+        <td>${escapeHtml(r.actor_email || '—')}</td>
+        <td><span class="badge badge-outline">${escapeHtml(r.action || '')}</span></td>
+        <td>${escapeHtml(r.detail || '')}</td>
+      </tr>`).join('');
+  } catch (e) { /* ignore */ }
+}
+
 async function loadAll() {
   await loadStats();
   allUsers = await API.adminUsers();
   renderUsers();
+  loadAudit();
 }
 
 // Add User modal

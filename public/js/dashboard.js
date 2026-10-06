@@ -124,6 +124,9 @@ document.getElementById('projectSort').addEventListener('change', renderProjects
   try {
     const { user } = await API.authMe();
     if (user.is_admin) document.getElementById('adminHomeCard').classList.remove('hidden');
+    twofaEnabled = !!user.has_2fa;
+    renderTwofaStatus();
+    loadSessions();
   } catch (e) {
     window.location.href = '/login.html';
   }
@@ -150,6 +153,71 @@ if (pwForm) {
     } catch (err) {
       toast(err.message, true);
     }
+  });
+}
+
+// ---- Two-factor auth ----
+let twofaEnabled = false;
+function renderTwofaStatus() {
+  const el = document.getElementById('twofaStatus');
+  if (!el) return;
+  el.innerHTML = twofaEnabled
+    ? '<span class="badge badge-info">Enabled</span> <button type="button" class="btn small danger" id="twofaDisableBtn" style="margin-left:8px;">Disable 2FA</button>'
+    : '<span class="badge badge-outline">Disabled</span> <button type="button" class="btn small secondary" id="twofaSetupBtn" style="margin-left:8px;">Enable 2FA</button>';
+  const setupBtn = document.getElementById('twofaSetupBtn');
+  if (setupBtn) setupBtn.addEventListener('click', startTwofaSetup);
+  const disBtn = document.getElementById('twofaDisableBtn');
+  if (disBtn) disBtn.addEventListener('click', disableTwofa);
+}
+async function startTwofaSetup() {
+  try {
+    const r = await API.twofaSetup();
+    document.getElementById('twofaQr').src = r.qr;
+    document.getElementById('twofaSecret').textContent = r.secret;
+    document.getElementById('twofaSetup').classList.remove('hidden');
+  } catch (e) { toast(e.message, true); }
+}
+async function disableTwofa() {
+  const password = prompt('Enter your password to disable 2FA:');
+  if (!password) return;
+  try { await API.twofaDisable({ password }); twofaEnabled = false; renderTwofaStatus(); toast('2FA disabled'); }
+  catch (e) { toast(e.message, true); }
+}
+if (document.getElementById('twofaConfirm')) {
+  document.getElementById('twofaConfirm').addEventListener('click', async () => {
+    const code = document.getElementById('twofaCode').value.trim();
+    try {
+      await API.twofaEnable(code);
+      twofaEnabled = true;
+      document.getElementById('twofaSetup').classList.add('hidden');
+      document.getElementById('twofaCode').value = '';
+      renderTwofaStatus();
+      toast('2FA enabled');
+    } catch (e) { toast(e.message, true); }
+  });
+  document.getElementById('twofaCancel').addEventListener('click', () => document.getElementById('twofaSetup').classList.add('hidden'));
+}
+
+// ---- Active sessions ----
+async function loadSessions() {
+  const el = document.getElementById('sessionList');
+  if (!el) return;
+  try {
+    const sessions = await API.listSessions();
+    el.innerHTML = sessions.map((s) => `
+      <div class="list-item">
+        <span class="content">${s.current ? '<span class="badge badge-info">This device</span> ' : ''}${escapeHtml(s.user_agent || 'Unknown device')}<br/>
+        <span class="helptext" style="margin:0;">${escapeHtml(s.ip || '')} · since ${new Date((s.created_at || '').replace(' ', 'T') + 'Z').toLocaleString()}</span></span>
+        ${s.current ? '' : `<button class="btn small danger" data-session="${s.id}">Revoke</button>`}
+      </div>`).join('');
+    el.querySelectorAll('[data-session]').forEach((b) => b.addEventListener('click', async () => {
+      try { await API.revokeSession(b.dataset.session); toast('Session revoked'); loadSessions(); } catch (e) { toast(e.message, true); }
+    }));
+  } catch (e) { /* ignore */ }
+}
+if (document.getElementById('revokeOthersBtn')) {
+  document.getElementById('revokeOthersBtn').addEventListener('click', async () => {
+    try { await API.revokeOtherSessions(); toast('Other devices logged out'); loadSessions(); } catch (e) { toast(e.message, true); }
   });
 }
 

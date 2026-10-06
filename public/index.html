@@ -64,6 +64,31 @@
         </div>
         <button type="submit" class="btn secondary">Change Password</button>
       </form>
+
+      <hr class="section-divider" />
+      <h3 style="margin-top:0;">Two-Factor Authentication (2FA)</h3>
+      <div class="helptext">Add a time-based code from an authenticator app (Google Authenticator, Authy, 1Password) as a second step at sign-in.</div>
+      <div id="twofaStatus"></div>
+      <div id="twofaSetup" class="hidden" style="margin-top:12px;">
+        <div class="row wrap" style="gap:18px; align-items:flex-start;">
+          <img id="twofaQr" alt="2FA QR code" style="width:160px; height:160px; border-radius:8px; background:#fff; padding:6px;" />
+          <div>
+            <div class="helptext" style="margin-top:0;">Scan the QR with your authenticator app, or enter this key manually:</div>
+            <div class="code" id="twofaSecret" style="display:inline-block; margin-bottom:10px;"></div>
+            <div class="row" style="gap:8px;">
+              <input type="text" id="twofaCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="width:130px;" />
+              <button type="button" class="btn" id="twofaConfirm">Enable 2FA</button>
+              <button type="button" class="btn secondary" id="twofaCancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="section-divider" />
+      <h3 style="margin-top:0;">Active Sessions</h3>
+      <div class="helptext">Devices currently signed in to your account.</div>
+      <div id="sessionList"></div>
+      <button type="button" class="btn secondary small" id="revokeOthersBtn" style="margin-top:8px;">Log out other devices</button>
     </div>
 
     <div class="card" style="margin-top:40px; border-color:rgba(240,56,79,0.35);">

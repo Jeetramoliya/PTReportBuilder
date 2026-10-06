@@ -59,18 +59,52 @@ async function seedAdmins() {
 }
 
 function getUserById(id) {
-  return db.prepare('SELECT id, email, name, is_admin, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare(`SELECT id, email, name, is_admin, plan, created_at,
+    (CASE WHEN totp_secret <> '' THEN 1 ELSE 0 END) AS has_2fa FROM users WHERE id = ?`).get(id);
 }
 
-async function createSession(userId) {
+async function createSession(userId, meta = {}) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  await db.prepare('INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+  await db.prepare('INSERT INTO user_sessions (token, user_id, user_agent, ip, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .run(token, userId, String(meta.ua || '').slice(0, 300), String(meta.ip || '').slice(0, 60), expiresAt);
   return token;
 }
 
 async function destroySession(token) {
   if (token) await db.prepare('DELETE FROM user_sessions WHERE token = ?').run(token);
+}
+
+async function listSessions(userId, currentToken) {
+  const rows = await db.prepare('SELECT token, user_agent, ip, created_at, expires_at FROM user_sessions WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+  return rows.map((r) => ({
+    id: r.token.slice(0, 12), user_agent: r.user_agent, ip: r.ip, created_at: r.created_at,
+    current: r.token === currentToken,
+  }));
+}
+
+async function revokeSession(userId, idPrefix, currentToken) {
+  const rows = await db.prepare('SELECT token FROM user_sessions WHERE user_id = ?').all(userId);
+  const match = rows.find((r) => r.token.slice(0, 12) === idPrefix && r.token !== currentToken);
+  if (match) await db.prepare('DELETE FROM user_sessions WHERE token = ?').run(match.token);
+}
+
+async function revokeOtherSessions(userId, keepToken) {
+  await db.prepare('DELETE FROM user_sessions WHERE user_id = ? AND token <> ?').run(userId, keepToken || '');
+}
+
+// --- TOTP (2FA) ---
+async function setTotpPending(userId, secret) {
+  await db.prepare('UPDATE users SET totp_pending = ? WHERE id = ?').run(secret, userId);
+}
+async function enableTotp(userId) {
+  await db.prepare("UPDATE users SET totp_secret = totp_pending, totp_pending = '' WHERE id = ?").run(userId);
+}
+async function disableTotp(userId) {
+  await db.prepare("UPDATE users SET totp_secret = '', totp_pending = '' WHERE id = ?").run(userId);
+}
+function getSecrets(userId) {
+  return db.prepare('SELECT totp_secret, totp_pending FROM users WHERE id = ?').get(userId);
 }
 
 // Returns the user row for a valid, unexpired session token, or null.
@@ -117,6 +151,13 @@ module.exports = {
   updatePassword,
   setAdmin,
   seedAdmins,
+  listSessions,
+  revokeSession,
+  revokeOtherSessions,
+  setTotpPending,
+  enableTotp,
+  disableTotp,
+  getSecrets,
   createSession,
   destroySession,
   userForSession,
