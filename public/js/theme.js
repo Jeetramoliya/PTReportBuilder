@@ -55,6 +55,20 @@
       picker.appendChild(dot);
     });
     document.body.appendChild(picker);
+
+    // "Powered by BlackRoot" brand badge, bottom-right.
+    if (!document.querySelector('.brandmark')) {
+      const mark = document.createElement('div');
+      mark.className = 'brandmark';
+      mark.innerHTML =
+        '<svg viewBox="0 0 48 52" width="18" height="20" fill="none" stroke="#e24a42" stroke-width="3" stroke-linejoin="round">'
+        + '<path d="M24 2 L44 10 V26 C44 40 24 50 24 50 C24 50 4 40 4 26 V10 Z"/>'
+        + '<path d="M19 25 V19 a5 5 0 0 1 10 0 V25"/>'
+        + '<rect x="16" y="25" width="16" height="12" rx="2" fill="#e24a42" stroke="none"/>'
+        + '</svg>'
+        + '<span>Powered by <strong>BLACKROOT</strong></span>';
+      document.body.appendChild(mark);
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);

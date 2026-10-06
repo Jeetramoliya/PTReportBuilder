@@ -147,6 +147,16 @@
       </div>
 
       <div class="card">
+        <h2>Client Share Link</h2>
+        <div class="helptext">Generate a read-only link to this report that a client can open in a browser without an account. Revoke it any time.</div>
+        <div id="shareState"></div>
+        <div class="row" style="margin-top:10px; gap:10px;">
+          <button type="button" class="btn secondary" id="genShareBtn" data-tip="Create a public read-only link to the report">Generate Link</button>
+          <button type="button" class="btn danger hidden" id="revokeShareBtn">Revoke Link</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h2 style="color:var(--high);">Danger Zone</h2>
         <button class="btn danger" id="deleteProjectBtn">Delete Project</button>
       </div>

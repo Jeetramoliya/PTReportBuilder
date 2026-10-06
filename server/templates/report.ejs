@@ -429,7 +429,7 @@
 <div class="page cover style-band align-<%= coverAlignment %>">
   <div class="cover-band-top align-<%= coverAlignment %>">
     <% if (project.logo_path) { %>
-      <img class="cover-logo" src="/<%= project.logo_path %>" />
+      <img class="cover-logo" src="<%= inlineImages ? logoDataUri : "/" + project.logo_path %>" />
     <% } else if (project.company_name || project.prepared_by_org) { %>
       <div class="cover-wordmark wm-<%= wordmarkStyle %>" style="<%= wordmark.inlineStyle %>"><%- wordmark.html %></div>
     <% } %>
@@ -456,7 +456,7 @@
 <div class="page cover style-<%= coverStyle %> align-<%= coverAlignment %>">
   <div>
     <% if (project.logo_path) { %>
-      <img class="cover-logo" src="/<%= project.logo_path %>" />
+      <img class="cover-logo" src="<%= inlineImages ? logoDataUri : "/" + project.logo_path %>" />
     <% } else if (project.company_name || project.prepared_by_org) { %>
       <div class="cover-wordmark wm-<%= wordmarkStyle %>" style="<%= wordmark.inlineStyle %>"><%- wordmark.html %></div>
     <% } %>
@@ -728,7 +728,7 @@
             <div class="payload-block"><%= step.payload %></div>
           <% } %>
           <% if (step.screenshot_path) { %>
-            <img src="/<%= step.screenshot_path %>" />
+            <img src="<%= inlineImages ? step.screenshotDataUri : "/" + step.screenshot_path %>" />
           <% } %>
         </li>
       <% }) %>

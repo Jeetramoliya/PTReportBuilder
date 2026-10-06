@@ -414,3 +414,37 @@ tr:hover td { background: rgba(255, 255, 255, 0.035); }
 }
 .theme-toggle:hover { border-color: var(--accent); background: var(--panel-2); }
 .accent-sep { width: 1px; height: 18px; background: var(--line-strong); margin: 0 2px; }
+
+/* "Powered by BlackRoot" brand badge (bottom-right) */
+.brandmark {
+  position: fixed; right: 16px; bottom: 16px; z-index: 150;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(18, 24, 36, 0.72); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px 6px 10px;
+  box-shadow: var(--shadow-md); font-size: 11.5px; color: var(--muted);
+  opacity: 0.72; transition: opacity 0.15s ease;
+}
+.brandmark:hover { opacity: 1; }
+.brandmark strong { color: #e24a42; font-weight: 800; letter-spacing: 0.06em; }
+html[data-theme="light"] .brandmark { background: rgba(255, 255, 255, 0.82); color: var(--muted); }
+/* Keep toasts clear of the badge */
+.toast { bottom: 70px; }
+@media (max-width: 640px) {
+  .brandmark { font-size: 11px; padding: 5px 10px; }
+  .brandmark span { display: none; } /* icon only on very small screens */
+}
+
+/* Mobile layout polish */
+@media (max-width: 680px) {
+  .container { padding: 20px 16px 72px; }
+  .topbar { padding: 12px 16px; }
+  .page-header h1 { font-size: 21px; }
+  .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; }
+  .design-layout { grid-template-columns: 1fr; }
+  .cover-preview-frame { position: static; margin: 0 auto; }
+  .tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .tab-btn { white-space: nowrap; }
+  .cover-style-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .modal { padding: 20px; }
+  .accent-picker { gap: 6px; padding: 6px 10px; }
+}

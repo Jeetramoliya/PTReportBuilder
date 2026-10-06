@@ -58,3 +58,22 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
 document.querySelectorAll('#signupForm input').forEach((inp) => {
   inp.addEventListener('input', () => { const r = inp.closest('.form-row'); if (r) r.classList.remove('invalid'); });
 });
+
+// Forgot password
+document.getElementById('forgotLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('forgotForm').classList.toggle('hidden');
+});
+document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = e.target.email.value.trim();
+  if (!EMAIL_RE.test(email)) { toast('Enter a valid email address', true); return; }
+  try {
+    const r = await API.post('/api/auth/forgot-password', { email });
+    toast(r.message || 'If an account exists, a reset link has been sent.');
+    e.target.reset();
+    e.target.classList.add('hidden');
+  } catch (err) {
+    toast(err.message, true);
+  }
+});

@@ -311,3 +311,20 @@ document.getElementById('retestForm').addEventListener('submit', async (e) => {
   }
   loadFinding();
 })();
+
+guardUnsaved(document.getElementById('findingForm'));
+
+document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
+  const f = document.getElementById('findingForm');
+  const name = prompt('Save as template — name:', f.title.value || 'My Template');
+  if (!name) return;
+  const data = {
+    name,
+    title: f.title.value, category: f.category.value, scope_type: f.scope_type.value,
+    owasp_category: f.owasp_category.value, cwe_id: f.cwe_id.value,
+    impact: f.impact.value, likelihood: f.likelihood.value,
+    description: f.description.value, remediation: f.remediation.value,
+    cvss_vector: (currentFinding && currentFinding.cvss_vector) || '',
+  };
+  try { await API.saveMyTemplate(data); toast('Saved to your template library'); } catch (e) { toast(e.message, true); }
+});

@@ -29,6 +29,8 @@ full Chromium does not run there, so PDF export fails. Use one of the hosts belo
 | `PORT` | `4173` | Port to listen on (most hosts set this automatically). |
 | `NODE_ENV` | — | Set to `production` so the session cookie is marked `Secure` (HTTPS only). |
 | `PUPPETEER_EXECUTABLE_PATH` | Puppeteer's bundled Chromium | Path to a system Chromium (the Dockerfile sets `/usr/bin/chromium`). |
+| `RESEND_API_KEY` | — | Optional. Resend API key to enable password-reset emails. Without it, password reset is disabled (change-password while signed in still works). |
+| `MAIL_FROM` | — | Optional. Sender for reset emails, e.g. `VAPT <noreply@yourdomain.com>` (must be a Resend-verified sender). |
 
 ## Recommended: Render (free) + Turso (free) — no credit card
 

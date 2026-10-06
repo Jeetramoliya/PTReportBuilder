@@ -69,8 +69,36 @@ async function loadProject() {
 
   renderScope(currentProject.scope);
   renderFindings(currentProject.findings);
+  renderShare();
   await renderDesignTab();
 }
+
+function renderShare() {
+  const state = document.getElementById('shareState');
+  const gen = document.getElementById('genShareBtn');
+  const rev = document.getElementById('revokeShareBtn');
+  if (currentProject.share_token) {
+    const url = `${location.origin}/share/${currentProject.share_token}`;
+    state.innerHTML = `<div class="list-item"><span class="content"><a href="${url}" target="_blank">${escapeHtml(url)}</a></span><button type="button" class="btn small secondary" id="copyShareBtn">Copy</button></div>`;
+    gen.classList.add('hidden');
+    rev.classList.remove('hidden');
+    document.getElementById('copyShareBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(url).then(() => toast('Link copied')).catch(() => toast('Copy failed', true));
+    });
+  } else {
+    state.innerHTML = '';
+    gen.classList.remove('hidden');
+    rev.classList.add('hidden');
+  }
+}
+
+document.getElementById('genShareBtn').addEventListener('click', async () => {
+  try { await API.createShare(projectId); toast('Share link created'); await loadProject(); } catch (e) { toast(e.message, true); }
+});
+document.getElementById('revokeShareBtn').addEventListener('click', async () => {
+  if (!confirm('Revoke the share link? Anyone with the old link will lose access.')) return;
+  try { await API.revokeShare(projectId); toast('Share link revoked'); await loadProject(); } catch (e) { toast(e.message, true); }
+});
 
 // ---- Design (theme + cover style) ----
 function coverThumbBackground(styleKey, theme) {
@@ -646,14 +674,24 @@ document.getElementById('importCommitBtn').addEventListener('click', async () =>
 // ---- Finding templates ----
 let findingTemplates = [];
 (async () => {
-  findingTemplates = await API.getFindingTemplates();
+  const [builtin, mine] = await Promise.all([API.getFindingTemplates(), API.getMyTemplates().catch(() => [])]);
+  const userTpls = mine.map((t) => ({ ...t, key: `user:${t.id}` }));
+  findingTemplates = [...userTpls, ...builtin];
   const select = document.getElementById('templateSelect');
-  for (const t of findingTemplates) {
-    const opt = document.createElement('option');
-    opt.value = t.key;
-    opt.textContent = t.title;
-    select.appendChild(opt);
-  }
+  const addGroup = (label, list, labelField) => {
+    if (!list.length) return;
+    const og = document.createElement('optgroup');
+    og.label = label;
+    for (const t of list) {
+      const opt = document.createElement('option');
+      opt.value = t.key;
+      opt.textContent = t[labelField] || t.title;
+      og.appendChild(opt);
+    }
+    select.appendChild(og);
+  };
+  addGroup('My Templates', userTpls, 'name');
+  addGroup('Built-in', builtin, 'title');
 })();
 
 document.getElementById('templateSelect').addEventListener('change', (e) => {
@@ -675,4 +713,5 @@ document.getElementById('templateSelect').addEventListener('change', (e) => {
   form.elements['remediation'].value = t.remediation || '';
 });
 
+guardUnsaved(document.getElementById('overviewForm'));
 loadProject();

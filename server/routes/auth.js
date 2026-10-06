@@ -1,6 +1,9 @@
 const express = require('express');
+const crypto = require('crypto');
 const auth = require('../utils/userAuth');
+const db = require('../db');
 const { deleteUserCascade } = require('../utils/cascade');
+const { sendMail, mailConfigured } = require('../utils/email');
 const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
@@ -51,6 +54,48 @@ router.post('/login', loginLimiter, async (req, res, next) => {
     const token = await auth.createSession(row.id);
     auth.setSessionCookie(res, token);
     res.json({ user: { id: row.id, email: row.email, name: row.name } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Request a password-reset email. Always responds generically so it can't be used to probe
+// which emails have accounts.
+router.post('/forgot-password', loginLimiter, async (req, res, next) => {
+  try {
+    if (!mailConfigured()) return res.status(503).json({ error: 'Password reset by email is not configured on this server.' });
+    const email = auth.normalizeEmail(req.body.email);
+    const user = await auth.findUserByEmail(email);
+    if (user) {
+      const token = crypto.randomBytes(24).toString('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      await db.prepare('INSERT INTO password_resets (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, user.id, expires);
+      const url = `${req.protocol}://${req.get('host')}/reset.html?token=${token}`;
+      await sendMail({
+        to: email,
+        subject: 'Reset your VAPT Report Builder password',
+        html: `<p>We received a request to reset your password. This link is valid for 1 hour:</p><p><a href="${url}">${url}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+      });
+    }
+    res.json({ ok: true, message: 'If an account exists for that email, a reset link has been sent.' });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Complete a password reset with a valid token.
+router.post('/reset-password', loginLimiter, async (req, res, next) => {
+  try {
+    const token = String(req.body.token || '');
+    const newPassword = req.body.new_password || '';
+    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    const row = await db.prepare('SELECT user_id, expires_at FROM password_resets WHERE token = ?').get(token);
+    if (!row || new Date(row.expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+    }
+    await auth.updatePassword(row.user_id, newPassword);
+    await db.prepare('DELETE FROM password_resets WHERE token = ?').run(token);
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

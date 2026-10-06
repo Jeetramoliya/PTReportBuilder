@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reset password — VAPT Report Builder</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script src="/js/theme.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-icon">&#128737;</span> VAPT Report Builder</div>
+  </div>
+
+  <div class="container" style="max-width:440px; margin-top:48px;">
+    <div class="card">
+      <h2>Set a new password</h2>
+      <div class="helptext">Choose a new password for your account.</div>
+      <form id="resetForm" novalidate>
+        <div class="form-row">
+          <label>New Password (min 6 chars)</label>
+          <input type="password" name="new_password" required autocomplete="new-password" />
+          <div class="field-error">Password must be at least 6 characters.</div>
+        </div>
+        <button type="submit" class="btn" style="width:100%;">Reset password</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    const token = qs('token');
+    if (!token) toast('Missing reset token — use the link from your email.', true);
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = e.target.new_password;
+      const row = input.closest('.form-row');
+      if (input.value.length < 6) { row.classList.add('invalid'); return; }
+      row.classList.remove('invalid');
+      try {
+        await API.post('/api/auth/reset-password', { token, new_password: input.value });
+        toast('Password updated — redirecting to sign in…');
+        setTimeout(() => { window.location.href = '/login.html'; }, 1200);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

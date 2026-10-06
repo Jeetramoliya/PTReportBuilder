@@ -17,6 +17,9 @@ app.use(express.urlencoded({ extended: true }));
 // Cheap public health check — used by an uptime pinger to keep a free host awake.
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// Public, read-only shared reports (token in the URL) — no auth.
+app.use('/share', require('./routes/publicShare'));
+
 app.use('/api/auth', require('./routes/auth'));
 app.use(requireAuth);
 

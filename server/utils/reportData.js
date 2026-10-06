@@ -49,7 +49,12 @@ function buildWordmark(project, theme) {
   return { hasName: !!name, inlineStyle: parts.join(';'), html };
 }
 
-async function buildReportData(projectId) {
+function dataUri(up) {
+  return up && up.data ? `data:${up.mime || 'image/png'};base64,${Buffer.from(up.data).toString('base64')}` : '';
+}
+
+async function buildReportData(projectId, opts = {}) {
+  const inline = !!opts.inline; // embed images as data URIs (for the public, auth-free share page)
   const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
   if (!project) return null;
 
@@ -65,6 +70,7 @@ async function buildReportData(projectId) {
       if (step.screenshot_path) {
         const up = await getUpload(step.screenshot_path);
         step.screenshot_bytes = up ? up.data : null;
+        step.screenshotDataUri = inline ? dataUri(up) : '';
       }
     }
     findings.push({
@@ -98,14 +104,18 @@ async function buildReportData(projectId) {
 
   // Logo bytes for the DOCX builder (HTML/PDF fetch it over HTTP from /uploads).
   let logoBytes = null;
+  let logoDataUri = '';
   if (project.logo_path) {
     const up = await getUpload(project.logo_path);
     logoBytes = up ? up.data : null;
+    logoDataUri = inline ? dataUri(up) : '';
   }
 
   return {
     project,
     logoBytes,
+    logoDataUri,
+    inlineImages: inline,
     theme,
     font: getFont(project.font_family),
     coverStyle: project.cover_style || 'classic',

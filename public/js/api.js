@@ -35,6 +35,8 @@ const API = {
   updateProject(id, data) { return this.put(`/api/projects/${id}`, data); },
   deleteProject(id) { return this.del(`/api/projects/${id}`); },
   cloneProject(id) { return this.post(`/api/projects/${id}/clone`); },
+  createShare(id) { return this.post(`/api/projects/${id}/share`); },
+  revokeShare(id) { return this.del(`/api/projects/${id}/share`); },
   uploadLogo(id, file) {
     const fd = new FormData();
     fd.append('logo', file);
@@ -67,6 +69,9 @@ const API = {
 
   getFindingTemplates() { return this.get('/api/meta/finding-templates'); },
   getOwaspCategories() { return this.get('/api/meta/owasp-categories'); },
+  getMyTemplates() { return this.get('/api/meta/my-templates'); },
+  saveMyTemplate(data) { return this.post('/api/meta/my-templates', data); },
+  deleteMyTemplate(id) { return this.del(`/api/meta/my-templates/${id}`); },
 
   addRetestEvent(findingId, data) { return this.post(`/api/findings/${findingId}/retest`, data); },
   deleteRetestEvent(eventId) { return this.del(`/api/retest/${eventId}`); },
@@ -97,4 +102,13 @@ function escapeHtml(str) {
 
 function qs(name) {
   return new URLSearchParams(window.location.search).get(name);
+}
+
+// Warns before leaving the page if a watched form has unsaved edits.
+function guardUnsaved(form) {
+  if (!form) return;
+  let dirty = false;
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('submit', () => { dirty = false; });
+  window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 }

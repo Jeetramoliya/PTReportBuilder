@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const multer = require('multer');
 const { nanoid } = require('nanoid');
 const db = require('../db');
@@ -183,6 +184,33 @@ router.post('/:id/clone', async (req, res, next) => {
     if (!project) return;
     const newId = await cloneProject(project.id, req.userId);
     res.status(201).json(await db.prepare('SELECT * FROM projects WHERE id = ?').get(newId));
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Create (or return existing) a public read-only share token for the report.
+router.post('/:id/share', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    let token = project.share_token;
+    if (!token) {
+      token = crypto.randomBytes(24).toString('hex');
+      await db.prepare('UPDATE projects SET share_token = ? WHERE id = ?').run(token, project.id);
+    }
+    res.json({ token });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete('/:id/share', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    await db.prepare("UPDATE projects SET share_token = '' WHERE id = ?").run(project.id);
+    res.status(204).end();
   } catch (e) {
     next(e);
   }

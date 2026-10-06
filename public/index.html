@@ -25,7 +25,17 @@
       <button class="btn" id="newProjectBtn">+ New Project</button>
     </div>
 
+    <div class="row wrap" id="projectToolbar" style="gap:10px; margin-bottom:18px;">
+      <input type="search" id="projectSearch" placeholder="Search projects or clients…" style="flex:1; min-width:220px;" />
+      <select id="projectSort" style="width:auto;">
+        <option value="updated">Recently updated</option>
+        <option value="name">Name (A–Z)</option>
+        <option value="findings">Most findings</option>
+        <option value="risk">Highest risk</option>
+      </select>
+    </div>
     <div id="projectsGrid" class="grid"></div>
+    <div id="noMatch" class="empty-state hidden"><p>No projects match your search.</p></div>
     <div id="emptyState" class="empty-state hidden">
       <p>No projects yet. Create your first pentest project to get started.</p>
       <button class="btn" id="emptyCreateBtn" style="margin-top:12px;">+ New Project</button>

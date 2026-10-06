@@ -108,6 +108,7 @@ const SCHEMA = [
     tagline TEXT DEFAULT 'Confidential & Proprietary',
     executive_summary TEXT DEFAULT '',
     methodology TEXT DEFAULT '',
+    share_token TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   )`,
@@ -184,11 +185,37 @@ const SCHEMA = [
     data BLOB,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  // A user's own reusable finding templates (data is the finding payload as JSON).
+  `CREATE TABLE IF NOT EXISTS finding_templates (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    data TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+  // Short-lived password reset tokens.
+  `CREATE TABLE IF NOT EXISTS password_resets (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
+];
+
+// Idempotent column additions for databases created before the column existed. Each runs on
+// every boot; "duplicate column" errors are expected and ignored.
+const MIGRATIONS = [
+  "ALTER TABLE projects ADD COLUMN share_token TEXT DEFAULT ''",
 ];
 
 async function initDb() {
   for (const stmt of SCHEMA) {
     await backend.exec(stmt);
+  }
+  for (const stmt of MIGRATIONS) {
+    try { await backend.exec(stmt); } catch (e) {
+      if (!/duplicate column/i.test(e.message || '')) throw e;
+    }
   }
 }
 

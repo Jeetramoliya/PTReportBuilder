@@ -12,15 +12,47 @@ function severityChips(p) {
   return chips.join('');
 }
 
+const RISK_WEIGHT = { sev_critical: 10000, sev_high: 1000, sev_medium: 100, sev_low: 10, sev_info: 1 };
+function riskScore(p) {
+  return Object.keys(RISK_WEIGHT).reduce((s, k) => s + (p[k] || 0) * RISK_WEIGHT[k], 0);
+}
+
+let allProjects = [];
+
 async function loadProjects() {
-  const projects = await API.listProjects();
+  allProjects = await API.listProjects();
+  renderProjects();
+}
+
+function renderProjects() {
+  const toolbar = document.getElementById('projectToolbar');
+  const noMatch = document.getElementById('noMatch');
   grid.innerHTML = '';
-  if (!projects.length) {
+  if (!allProjects.length) {
     emptyState.classList.remove('hidden');
+    noMatch.classList.add('hidden');
+    if (toolbar) toolbar.classList.add('hidden');
     return;
   }
   emptyState.classList.add('hidden');
-  for (const p of projects) {
+  if (toolbar) toolbar.classList.remove('hidden');
+
+  const q = (document.getElementById('projectSearch').value || '').trim().toLowerCase();
+  const sort = document.getElementById('projectSort').value;
+  let list = allProjects.filter((p) => !q
+    || (p.name || '').toLowerCase().includes(q)
+    || (p.client_name || '').toLowerCase().includes(q));
+  const sorters = {
+    updated: (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
+    name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+    findings: (a, b) => b.finding_count - a.finding_count,
+    risk: (a, b) => riskScore(b) - riskScore(a),
+  };
+  list = list.slice().sort(sorters[sort] || sorters.updated);
+
+  noMatch.classList.toggle('hidden', list.length > 0);
+
+  for (const p of list) {
     const card = document.createElement('div');
     card.className = 'card project-card';
     card.innerHTML = `
@@ -82,6 +114,9 @@ document.getElementById('newProjectForm').addEventListener('submit', async (e) =
     toast(err.message, true);
   }
 });
+
+document.getElementById('projectSearch').addEventListener('input', renderProjects);
+document.getElementById('projectSort').addEventListener('change', renderProjects);
 
 // ---- Current user / logout ----
 (async () => {
