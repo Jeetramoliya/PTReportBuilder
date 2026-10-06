@@ -19,7 +19,7 @@
     const fav = document.createElement('link');
     fav.rel = 'icon';
     fav.type = 'image/svg+xml';
-    fav.href = '/img/blackroot.svg';
+    fav.href = '/img/blackroot-icon.svg';
     document.head.appendChild(fav);
   } catch (e) { /* ignore */ }
 

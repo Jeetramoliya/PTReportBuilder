@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" fill="none" role="img" aria-label="BlackRoot">
+  <!-- shield -->
+  <path d="M26 3 L47 11 V27 C47 40 26 50 26 50 C26 50 5 40 5 27 V11 Z"
+        stroke="#e24a42" stroke-width="4" stroke-linejoin="round"/>
+  <!-- padlock shackle -->
+  <path d="M19 25 V20 a7 7 0 0 1 14 0 V25" stroke="#e24a42" stroke-width="4" stroke-linecap="round"/>
+  <!-- padlock body with keyhole punched out (even-odd) -->
+  <path fill="#e24a42" fill-rule="evenodd" d="
+    M15 25 h22 a3 3 0 0 1 3 3 v13 a3 3 0 0 1 -3 3 h-22 a3 3 0 0 1 -3 -3 v-13 a3 3 0 0 1 3 -3 z
+    M22.5 32 a3.5 3.5 0 1 1 7 0 a3.5 3.5 0 1 1 -7 0 z
+    M24 34 h4 l-1.3 6 h-1.4 z"/>
+</svg>
