@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 4173;
 // and the Secure cookie flag is set correctly in production.
 app.set('trust proxy', 1);
 
+app.use(require('./middleware/securityHeaders'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
