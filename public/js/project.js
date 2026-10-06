@@ -151,6 +151,25 @@ function hfThumbStyle(preview, theme) {
   return `background:${bg}; ${extra} height:40px;`;
 }
 
+// The design preview only shows the cover, so render just the cover (mode=cover) instead of
+// the whole report — far cheaper — and debounce rapid option clicks into one reload.
+let previewTimer = null;
+function refreshCoverPreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    const f = document.getElementById('coverPreviewFrame');
+    if (f) f.src = `/api/projects/${projectId}/report/preview?mode=cover&t=${Date.now()}`;
+  }, 120);
+}
+
+// Apply a design option: update locally + re-render the design tab instantly (optimistic),
+// then save in the background. Avoids the full project reload that made this laggy.
+async function onDesignChange(patch) {
+  Object.assign(currentProject, patch);
+  renderDesignTab();
+  try { await API.updateProject(projectId, patch); } catch (e) { toast(e.message, true); }
+}
+
 async function renderDesignTab() {
   if (!themesMeta) themesMeta = await API.getThemesMeta();
 
@@ -161,15 +180,7 @@ async function renderDesignTab() {
     btn.type = 'button';
     btn.className = 'swatch-btn' + (currentProject.theme === t.key ? ' selected' : '');
     btn.innerHTML = `<span class="swatch-dot" style="background:${t.brand};"></span> ${escapeHtml(t.name)}`;
-    btn.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { theme: t.key });
-        toast(`Theme set to ${t.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    btn.addEventListener('click', () => onDesignChange({ theme: t.key }));
     themeGrid.appendChild(btn);
   }
   if (currentProject.theme === 'custom' && currentProject.custom_brand_color) {
@@ -194,15 +205,7 @@ async function renderDesignTab() {
       <div class="name">${escapeHtml(s.name)}</div>
       <div class="desc">${escapeHtml(s.description)}</div>
     `;
-    card.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { cover_style: s.key });
-        toast(`Cover style set to ${s.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    card.addEventListener('click', () => onDesignChange({ cover_style: s.key }));
     coverGrid.appendChild(card);
   }
 
@@ -213,15 +216,7 @@ async function renderDesignTab() {
     btn.type = 'button';
     btn.className = 'swatch-btn' + ((currentProject.cover_alignment || 'left') === a.key ? ' selected' : '');
     btn.textContent = a.name;
-    btn.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { cover_alignment: a.key });
-        toast(`Cover alignment set to ${a.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    btn.addEventListener('click', () => onDesignChange({ cover_alignment: a.key }));
     alignGrid.appendChild(btn);
   }
 
@@ -236,15 +231,7 @@ async function renderDesignTab() {
         <div class="name">${escapeHtml(w.name)}</div>
         <div class="desc">${escapeHtml(w.description)}</div>
       `;
-      card.addEventListener('click', async () => {
-        try {
-          await API.updateProject(projectId, { wordmark_style: w.key });
-          toast(`Company name style set to ${w.name}`);
-          await loadProject();
-        } catch (err) {
-          toast(err.message, true);
-        }
-      });
+      card.addEventListener('click', () => onDesignChange({ wordmark_style: w.key }));
       wmGrid.appendChild(card);
     }
   }
@@ -258,15 +245,7 @@ async function renderDesignTab() {
     btn.className = 'swatch-btn' + (currentProject.font_family === f.key ? ' selected' : '');
     btn.style.fontFamily = f.stack;
     btn.textContent = f.name;
-    btn.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { font_family: f.key });
-        toast(`Font set to ${f.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    btn.addEventListener('click', () => onDesignChange({ font_family: f.key }));
     fontGrid.appendChild(btn);
   }
 
@@ -278,15 +257,7 @@ async function renderDesignTab() {
     btn.type = 'button';
     btn.className = 'swatch-btn' + (currentProject.page_background === b.key ? ' selected' : '');
     btn.innerHTML = `<span class="swatch-dot" style="background:${swatchColor}; border-color:#ccc;"></span> ${escapeHtml(b.name)}`;
-    btn.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { page_background: b.key });
-        toast(`Page background set to ${b.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    btn.addEventListener('click', () => onDesignChange({ page_background: b.key }));
     pageBgGrid.appendChild(btn);
   }
 
@@ -301,21 +272,13 @@ async function renderDesignTab() {
       <div class="name">${escapeHtml(s.name)}</div>
       <div class="desc">${escapeHtml(s.description)}</div>
     `;
-    card.addEventListener('click', async () => {
-      try {
-        await API.updateProject(projectId, { header_footer_style: s.key });
-        toast(`Header/footer style set to ${s.name}`);
-        await loadProject();
-      } catch (err) {
-        toast(err.message, true);
-      }
-    });
+    card.addEventListener('click', () => onDesignChange({ header_footer_style: s.key }));
     hfGrid.appendChild(card);
   }
 
   document.querySelector('#watermarkForm [name=watermark_text]').value = currentProject.watermark_text || '';
 
-  document.getElementById('coverPreviewFrame').src = `/api/projects/${projectId}/report/preview?t=${Date.now()}`;
+  refreshCoverPreview();
 }
 
 document.getElementById('watermarkForm').addEventListener('submit', async (e) => {
@@ -385,6 +348,7 @@ async function saveWordmark(patch) {
     ? { brand: currentProject.custom_brand_color }
     : (themesMeta.themes.find((x) => x.key === currentProject.theme) || themesMeta.themes[0]);
   updateWordmarkPreview(t);
+  refreshCoverPreview();
   try { await API.updateProject(projectId, patch); } catch (err) { toast(err.message, true); }
 }
 
