@@ -94,6 +94,27 @@
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .cover-wordmark.wm-spaced { text-transform: uppercase; letter-spacing: 0.28em; font-weight: 700; }
+  .cover-wordmark.wm-double { padding-bottom: 7px; border-bottom: 6px double var(--color-brand); }
+  .cover-wordmark.wm-overline { padding-top: 8px; border-top: 3px solid var(--color-brand); }
+  .cover-wordmark.wm-bracket::before { content: '[ '; color: var(--color-brand); }
+  .cover-wordmark.wm-bracket::after { content: ' ]'; color: var(--color-brand); }
+  .cover-wordmark.wm-leftbar { padding-left: 14px; border-left: 6px solid var(--color-brand); }
+  .cover-wordmark.wm-shadow { text-shadow: 0 3px 8px rgba(0, 0, 0, 0.28); }
+  .cover-wordmark.wm-gradient {
+    background: linear-gradient(90deg, var(--color-brand), var(--color-accent));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cover-wordmark.wm-outline { color: transparent; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.4px var(--color-brand); }
+  .cover-wordmark.wm-pill {
+    background: var(--color-brand); color: #fff; padding: 8px 24px; border-radius: 999px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cover-wordmark.wm-tag {
+    background: var(--color-brand); color: #fff; padding: 8px 16px; border-left: 5px solid var(--color-accent); border-radius: 3px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cover-wordmark.wm-capsrule { display: inline-block; text-transform: uppercase; letter-spacing: 0.2em; padding-bottom: 7px; border-bottom: 2px solid var(--color-brand); }
   .cover-title { font-size: 32px; color: var(--color-brand); margin-bottom: 6px; }
   .cover-subtitle { font-size: 16px; color: var(--color-muted); margin-bottom: 40px; }
   .cover-meta { font-size: 13px; color: var(--color-ink); }
@@ -223,6 +244,97 @@
     margin: 20px;
     z-index: 0;
   }
+
+  /* Cover style: corner (top-right triangle) */
+  .cover.style-corner::before {
+    content: ''; position: absolute; top: 0; right: 0;
+    border-top: 180px solid var(--color-brand); border-left: 180px solid transparent; z-index: 0;
+  }
+
+  /* Cover style: ribbon (diagonal brand ribbon in the top-right) */
+  .cover.style-ribbon::after {
+    content: ''; position: absolute; top: 42px; right: -74px; width: 280px; height: 40px;
+    background: var(--color-brand); transform: rotate(45deg);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 0;
+  }
+
+  /* Cover style: waves (layered ellipse bands at the bottom) */
+  .cover.style-waves::before {
+    content: ''; position: absolute; left: -12%; right: -12%; bottom: -70px; height: 240px;
+    background: var(--color-brand-light); border-radius: 50% / 70px; z-index: 0;
+  }
+  .cover.style-waves::after {
+    content: ''; position: absolute; left: -12%; right: -12%; bottom: -120px; height: 240px;
+    background: var(--color-brand); opacity: 0.16; border-radius: 50% / 90px; z-index: 0;
+  }
+
+  /* Cover style: circuit (faint technical traces) */
+  .cover.style-circuit::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.5; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%23c3ccd6' stroke-width='1.5'%3E%3Cpath d='M12 12h46v34h34'/%3E%3Cpath d='M128 24H92v44H58v52'/%3E%3Cpath d='M12 82h30v46'/%3E%3C/g%3E%3Cg fill='%23c3ccd6'%3E%3Ccircle cx='92' cy='46' r='3.5'/%3E%3Ccircle cx='58' cy='46' r='3.5'/%3E%3Ccircle cx='42' cy='82' r='3.5'/%3E%3Ccircle cx='92' cy='68' r='3.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 140px 140px;
+  }
+
+  /* Cover style: mesh (dark backdrop with soft colour blobs) */
+  .cover.style-mesh { background: var(--color-brand-dark); }
+  .cover.style-mesh::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.6; z-index: 0;
+    background:
+      radial-gradient(520px 420px at 15% 18%, var(--color-accent), transparent 60%),
+      radial-gradient(520px 420px at 88% 12%, var(--color-brand), transparent 60%),
+      radial-gradient(560px 520px at 78% 92%, var(--color-accent), transparent 55%);
+  }
+
+  /* Cover style: triangles (low-poly facets in brand tints) */
+  .cover.style-triangles::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.55; z-index: 0;
+    background:
+      linear-gradient(135deg, var(--color-brand-light) 25%, transparent 25.5%) -60px 0 / 120px 120px,
+      linear-gradient(225deg, var(--color-brand-light) 25%, transparent 25.5%) 0 0 / 120px 120px;
+  }
+
+  /* Cover style: terminal (dark console with a window bar) */
+  .cover.style-terminal { background: #0c1018; }
+  .cover.style-terminal::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 36px; background: #1b2330;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 0;
+  }
+  .cover.style-terminal::after {
+    content: ''; position: absolute; top: 13px; left: 20px; width: 10px; height: 10px; border-radius: 50%;
+    background: #ff5f56; box-shadow: 18px 0 0 #ffbd2e, 36px 0 0 #27c93f;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 0;
+  }
+
+  /* Cover style: shield (large watermark emblem) */
+  .cover.style-shield::before {
+    content: ''; position: absolute; bottom: -40px; right: -30px; width: 360px; height: 360px; opacity: 0.08; z-index: 0;
+    background-repeat: no-repeat; background-size: contain;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23334155'%3E%3Cpath d='M50 3 L95 20 V54 C95 80 50 97 50 97 C50 97 5 80 5 54 V20 Z'/%3E%3C/svg%3E");
+  }
+
+  /* Cover style: sidebar (full-height brand panel on the left) */
+  .cover.style-sidebar { padding-left: 210px; }
+  .cover.style-sidebar::before {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 150px;
+    background: linear-gradient(180deg, var(--color-brand), var(--color-brand-dark));
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 0;
+  }
+
+  /* Cover style: topaccent (slim gradient accent across the top) */
+  .cover.style-topaccent { padding-top: 76px; }
+  .cover.style-topaccent::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 14px;
+    background: linear-gradient(90deg, var(--color-brand), var(--color-accent));
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 0;
+  }
+
+  /* White text for the dark-backdrop cover styles */
+  .cover.style-mesh .cover-title, .cover.style-mesh .cover-meta, .cover.style-mesh .cover-footer,
+  .cover.style-terminal .cover-title, .cover.style-terminal .cover-meta, .cover.style-terminal .cover-footer { color: #fff; }
+  .cover.style-mesh .cover-subtitle, .cover.style-terminal .cover-subtitle { color: rgba(255, 255, 255, 0.78); }
+  .cover.style-mesh .cover-client-box, .cover.style-terminal .cover-client-box { border-top-color: rgba(255, 255, 255, 0.3); }
+  .cover.style-mesh .cover-wordmark, .cover.style-terminal .cover-wordmark { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+  .cover.style-mesh .cover-iteration, .cover.style-terminal .cover-iteration { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.5); color: #fff; }
 
   /* Cover alignment */
   .cover.align-center > div:first-child,

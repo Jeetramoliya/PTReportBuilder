@@ -1,4 +1,7 @@
 const { PDFDocument, PDFName, PDFArray, PDFDict, StandardFonts, rgb } = require('pdf-lib');
+const { HEADER_FOOTER_STYLES } = require('./themes');
+
+const HF_BY_KEY = Object.fromEntries(HEADER_FOOTER_STYLES.map((s) => [s.key, s]));
 
 function hexToRgbColor(hex) {
   const m = String(hex || '#ffffff').replace('#', '');
@@ -16,23 +19,41 @@ function safe(str) {
     .replace(/[^\x20-\x7E]/g, '');
 }
 
-const HF_PRESETS = {
-  minimal: { bar: false, textHex: '#5b6773', rule: false },
-  'brand-bar': { bar: true, barHex: (t) => t.brand, textHex: '#ffffff', rule: false },
-  'dark-bar': { bar: true, barHex: (t) => t.brandDark, textHex: '#ffffff', rule: false },
-  'line-accent': { bar: false, textHex: '#5b6773', rule: true },
-};
+// Resolves a colour token (from a header/footer style's `preview`) against the active theme.
+function tokenColor(token, theme) {
+  if (token === 'brand') return theme.brand;
+  if (token === 'dark') return theme.brandDark;
+  if (token === 'accent') return theme.accent;
+  if (token === 'tint') return theme.brandLight;
+  return null;
+}
 
 // Draws a full-bleed (edge-to-edge) header and footer onto the given pages using pdf-lib,
 // so the coloured bar spans the entire page width instead of sitting inside the print
-// margins (which is what Chromium's own header/footer templates do).
+// margins (which is what Chromium's own header/footer templates do). The look is driven by
+// the chosen style's `preview` tokens (see HEADER_FOOTER_STYLES in themes.js).
 async function drawHeaderFooter(doc, data, startIndex) {
-  const preset = HF_PRESETS[data.headerFooterStyle] || HF_PRESETS.minimal;
+  const style = HF_BY_KEY[data.headerFooterStyle] || HF_BY_KEY.minimal || {};
+  const pv = style.preview || {};
+  const theme = data.theme;
+
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-  const textColor = hexToRgbColor(preset.textHex);
-  const barColor = preset.bar ? hexToRgbColor(preset.barHex(data.theme)) : null;
-  const accentColor = hexToRgbColor(data.theme.brand);
+
+  const headerHasBar = pv.barPlace === 'both' || pv.barPlace === 'header';
+  const footerHasBar = pv.barPlace === 'both' || pv.barPlace === 'footer';
+  const headerHasRule = pv.rulePlace === 'both' || pv.rulePlace === 'header';
+  const footerHasRule = pv.rulePlace === 'both' || pv.rulePlace === 'footer';
+
+  const barColor = pv.barColor ? hexToRgbColor(tokenColor(pv.barColor, theme)) : null;
+  const ruleColor = pv.ruleColor ? hexToRgbColor(tokenColor(pv.ruleColor, theme)) : null;
+  const edgeColor = pv.edge ? hexToRgbColor(tokenColor(pv.edge, theme)) : null;
+
+  // Text on a coloured bar is white (or brand on a light tint); otherwise muted grey or brand.
+  const plainHex = pv.text === 'brand' ? theme.brand : '#5b6773';
+  const onBarHex = pv.barColor === 'tint' ? theme.brand : '#ffffff';
+  const headerTextColor = hexToRgbColor(headerHasBar ? onBarHex : plainHex);
+  const footerTextColor = hexToRgbColor(footerHasBar ? onBarHex : plainHex);
 
   const bandH = 26;
   const inset = 28;
@@ -53,27 +74,34 @@ async function drawHeaderFooter(doc, data, startIndex) {
     const footerCY = 40;            // vertical centre of the footer band
     const textY = (cy) => cy - fontSize / 2 + 1;
 
-    if (preset.bar) {
-      page.drawRectangle({ x: 0, y: headerCY - bandH / 2, width, height: bandH, color: barColor });
-      page.drawRectangle({ x: 0, y: footerCY - bandH / 2, width, height: bandH, color: barColor });
+    if (headerHasBar) page.drawRectangle({ x: 0, y: headerCY - bandH / 2, width, height: bandH, color: barColor });
+    if (footerHasBar) page.drawRectangle({ x: 0, y: footerCY - bandH / 2, width, height: bandH, color: barColor });
+
+    if (headerHasRule) {
+      page.drawRectangle({ x: 0, y: headerCY - bandH / 2, width, height: 1.5, color: ruleColor });
+      if (pv.double) page.drawRectangle({ x: 0, y: headerCY - bandH / 2 - 4, width, height: 1.5, color: ruleColor });
     }
-    if (preset.rule) {
-      page.drawRectangle({ x: 0, y: headerCY - bandH / 2, width, height: 1.5, color: accentColor });
-      page.drawRectangle({ x: 0, y: footerCY + bandH / 2, width, height: 1.5, color: accentColor });
+    if (footerHasRule) {
+      page.drawRectangle({ x: 0, y: footerCY + bandH / 2, width, height: 1.5, color: ruleColor });
+      if (pv.double) page.drawRectangle({ x: 0, y: footerCY + bandH / 2 + 4, width, height: 1.5, color: ruleColor });
+    }
+    if (edgeColor) {
+      page.drawRectangle({ x: 0, y: height - 6, width, height: 6, color: edgeColor });
+      page.drawRectangle({ x: 0, y: 0, width, height: 6, color: edgeColor });
     }
 
     // Header: title (left), tagline (right)
-    if (reportTitle) page.drawText(reportTitle, { x: inset, y: textY(headerCY), size: fontSize, font, color: textColor });
+    if (reportTitle) page.drawText(reportTitle, { x: inset, y: textY(headerCY), size: fontSize, font, color: headerTextColor });
     if (tagline) {
       const w = font.widthOfTextAtSize(tagline, fontSize);
-      page.drawText(tagline, { x: width - inset - w, y: textY(headerCY), size: fontSize, font, color: textColor });
+      page.drawText(tagline, { x: width - inset - w, y: textY(headerCY), size: fontSize, font, color: headerTextColor });
     }
 
     // Footer: client — tagline (left), page X of Y (right)
-    if (footerLeft) page.drawText(footerLeft, { x: inset, y: textY(footerCY), size: fontSize, font, color: textColor });
+    if (footerLeft) page.drawText(footerLeft, { x: inset, y: textY(footerCY), size: fontSize, font, color: footerTextColor });
     const pageLabel = `Page ${i + 1} of ${total}`;
     const plw = boldFont.widthOfTextAtSize(pageLabel, fontSize);
-    page.drawText(pageLabel, { x: width - inset - plw, y: textY(footerCY), size: fontSize, font: boldFont, color: textColor });
+    page.drawText(pageLabel, { x: width - inset - plw, y: textY(footerCY), size: fontSize, font: boldFont, color: footerTextColor });
   }
 }
 

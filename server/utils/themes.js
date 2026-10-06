@@ -26,6 +26,16 @@ const COVER_STYLES = [
   { key: 'hex', name: 'Hexagon Grid', description: 'A honeycomb pattern of hexagon outlines in the corner.' },
   { key: 'dots', name: 'Dot Grid', description: 'A subtle grid of dots accenting the lower half.' },
   { key: 'blueprint', name: 'Blueprint', description: 'Fine technical grid lines, like an engineering blueprint.' },
+  { key: 'corner', name: 'Corner Triangle', description: 'A bold brand triangle anchoring the top-left corner.' },
+  { key: 'ribbon', name: 'Diagonal Ribbon', description: 'A diagonal brand ribbon sweeping across the top corner.' },
+  { key: 'waves', name: 'Waves', description: 'Layered wave bands flowing across the lower edge.' },
+  { key: 'circuit', name: 'Circuit', description: 'Faint circuit-board traces for a technical, security feel.' },
+  { key: 'mesh', name: 'Mesh Gradient', description: 'Soft overlapping colour blobs on a dark backdrop.' },
+  { key: 'triangles', name: 'Low Poly', description: 'A faceted low-polygon pattern in brand tints.' },
+  { key: 'terminal', name: 'Terminal', description: 'Dark console look with a window bar — hacker aesthetic.' },
+  { key: 'shield', name: 'Shield', description: 'A large watermark shield emblem in the corner.' },
+  { key: 'sidebar', name: 'Sidebar Panel', description: 'A full-height brand panel down the left side.' },
+  { key: 'topaccent', name: 'Top Accent', description: 'Minimal cover with a slim gradient accent across the top.' },
 ];
 
 const PAGE_BACKGROUNDS = [
@@ -33,13 +43,38 @@ const PAGE_BACKGROUNDS = [
   { key: 'ivory', name: 'Ivory', swatch: '#faf7f0' },
   { key: 'cool-gray', name: 'Cool Gray', swatch: '#f4f6f8' },
   { key: 'brand-tint', name: 'Brand Tint', swatch: 'theme' },
+  { key: 'warm-gray', name: 'Warm Gray', swatch: '#f5f4f2' },
+  { key: 'slate-tint', name: 'Slate Tint', swatch: '#eef1f5' },
+  { key: 'mint', name: 'Mint', swatch: '#f0f7f4' },
+  { key: 'rose-tint', name: 'Rose Tint', swatch: '#fdf4f6' },
+  { key: 'sky', name: 'Sky', swatch: '#eef5fb' },
+  { key: 'sand', name: 'Sand', swatch: '#f7f3ea' },
+  { key: 'lavender', name: 'Lavender', swatch: '#f4f1fb' },
+  { key: 'dot-grid', name: 'Dot Grid', swatch: '#fbfbfc', css: 'radial-gradient(#e5e9ef 1.1px, transparent 1.3px) 0 0 / 22px 22px, #ffffff' },
+  { key: 'grid-lines', name: 'Grid Lines', swatch: '#fbfbfc', css: 'repeating-linear-gradient(0deg,#eef1f5 0 1px,transparent 1px 24px), repeating-linear-gradient(90deg,#eef1f5 0 1px,transparent 1px 24px), #ffffff' },
+  { key: 'soft-gradient', name: 'Soft Gradient', swatch: '#f6f8fb', css: 'linear-gradient(180deg,#ffffff 0%,#eef2f7 100%)' },
 ];
 
+// `preview` tokens drive BOTH the Design-tab thumbnail and the actual pdf-lib drawing
+// (see pdfMerge.js), so each header/footer style is defined in one place.
+//   barPlace: 'both' | 'header' | 'footer'   barColor: 'brand' | 'dark' | 'accent' | 'tint'
+//   rulePlace: 'both' | 'header' | 'footer'  ruleColor: 'brand' | 'accent'   double: true
+//   edge: 'brand' | 'accent'                 text: 'muted' | 'brand'
 const HEADER_FOOTER_STYLES = [
-  { key: 'minimal', name: 'Minimal', description: 'Plain white bar with muted gray text (default).' },
-  { key: 'brand-bar', name: 'Brand Bar', description: 'Solid brand-colored bar with white text.' },
-  { key: 'dark-bar', name: 'Dark Bar', description: 'Dark bar with light text.' },
-  { key: 'line-accent', name: 'Line Accent', description: 'White bar with a colored top/bottom rule.' },
+  { key: 'minimal', name: 'Minimal', description: 'Plain white bar with muted gray text (default).', preview: { text: 'muted' } },
+  { key: 'brand-bar', name: 'Brand Bar', description: 'Solid brand-colored bar with white text.', preview: { barPlace: 'both', barColor: 'brand' } },
+  { key: 'dark-bar', name: 'Dark Bar', description: 'Dark bar with light text.', preview: { barPlace: 'both', barColor: 'dark' } },
+  { key: 'line-accent', name: 'Line Accent', description: 'White bar with a colored top/bottom rule.', preview: { rulePlace: 'both', ruleColor: 'brand', text: 'muted' } },
+  { key: 'accent-bar', name: 'Accent Bar', description: 'Solid bar in the lighter accent colour.', preview: { barPlace: 'both', barColor: 'accent' } },
+  { key: 'brand-footer', name: 'Brand Footer', description: 'Brand bar on the footer only; clean header.', preview: { barPlace: 'footer', barColor: 'brand', text: 'muted' } },
+  { key: 'brand-header', name: 'Brand Header', description: 'Brand bar on the header only; clean footer.', preview: { barPlace: 'header', barColor: 'brand', text: 'muted' } },
+  { key: 'edge-accent', name: 'Edge Accent', description: 'Thin brand strips at the very top and bottom edges.', preview: { edge: 'brand', text: 'muted' } },
+  { key: 'double-rule', name: 'Double Rule', description: 'Two parallel brand rules, no fill.', preview: { rulePlace: 'both', ruleColor: 'brand', double: true, text: 'muted' } },
+  { key: 'brand-text', name: 'Brand Text', description: 'No bar — header/footer text in the brand colour.', preview: { text: 'brand' } },
+  { key: 'brand-rule', name: 'Brand Rule', description: 'Brand rule with brand-coloured text.', preview: { rulePlace: 'both', ruleColor: 'brand', text: 'brand' } },
+  { key: 'tinted-bar', name: 'Tinted Bar', description: 'Soft brand-tint bar with brand-coloured text.', preview: { barPlace: 'both', barColor: 'tint' } },
+  { key: 'accent-edge-bar', name: 'Accent Edge Bar', description: 'Brand bar framed by thin accent edge strips.', preview: { barPlace: 'both', barColor: 'brand', edge: 'accent' } },
+  { key: 'dark-accent', name: 'Dark + Accent', description: 'Dark bar with a bright accent inner rule.', preview: { barPlace: 'both', barColor: 'dark', rulePlace: 'both', ruleColor: 'accent' } },
 ];
 
 const COVER_ALIGNMENTS = [
@@ -54,6 +89,16 @@ const WORDMARK_STYLES = [
   { key: 'boxed', name: 'Outlined', description: 'Name inside a thin brand-colored box.' },
   { key: 'badge', name: 'Solid Badge', description: 'White name on a filled brand-colored badge.' },
   { key: 'spaced', name: 'Spaced Caps', description: 'Wide-tracked uppercase lettering, no rule.' },
+  { key: 'double', name: 'Double Rule', description: 'Bold name over two stacked brand rules.' },
+  { key: 'overline', name: 'Overline', description: 'A brand rule sitting above the name.' },
+  { key: 'bracket', name: 'Brackets', description: 'Name wrapped in brand-coloured brackets.' },
+  { key: 'leftbar', name: 'Left Bar', description: 'A thick brand bar to the left of the name.' },
+  { key: 'shadow', name: 'Soft Shadow', description: 'Bold name lifted with a soft drop shadow.' },
+  { key: 'gradient', name: 'Gradient Text', description: 'Letters filled with a brand-to-accent gradient.' },
+  { key: 'outline', name: 'Outlined', description: 'Hollow, outlined lettering.' },
+  { key: 'pill', name: 'Pill Badge', description: 'White name inside a rounded brand pill.' },
+  { key: 'tag', name: 'Tag', description: 'Name on a brand badge with a bright accent edge.' },
+  { key: 'capsrule', name: 'Caps & Rule', description: 'Wide uppercase name above a full-width rule.' },
 ];
 
 function clamp(n) {
@@ -104,7 +149,8 @@ function resolveTheme(project) {
 function resolvePageBackground(key, theme) {
   if (key === 'brand-tint') return theme.brandLight;
   const found = PAGE_BACKGROUNDS.find((b) => b.key === key);
-  return found ? found.swatch : '#ffffff';
+  if (!found) return '#ffffff';
+  return found.css || found.swatch; // css = full `background` shorthand (patterns/gradients)
 }
 
 module.exports = {

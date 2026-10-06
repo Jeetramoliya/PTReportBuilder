@@ -83,9 +83,44 @@ function coverThumbBackground(styleKey, theme) {
       return `linear-gradient(to bottom, ${theme.brand} 0%, ${theme.brand} 45%, #ffffff 45%, #ffffff 100%)`;
     case 'geometric':
       return `radial-gradient(circle at 85% 15%, ${theme.brandLight} 0%, ${theme.brandLight} 30%, #ffffff 31%)`;
+    case 'corner':
+      return `linear-gradient(to bottom left, ${theme.brand} 0, ${theme.brand} 26%, #ffffff 26%)`;
+    case 'ribbon':
+      return `linear-gradient(45deg, #ffffff 42%, ${theme.brand} 42%, ${theme.brand} 56%, #ffffff 56%)`;
+    case 'waves':
+      return `radial-gradient(ellipse at bottom, ${theme.brandLight} 0, ${theme.brandLight} 42%, #ffffff 44%)`;
+    case 'circuit':
+      return '#eef2f6';
+    case 'mesh':
+      return `radial-gradient(circle at 25% 25%, ${theme.brand} 0%, ${theme.brandDark} 60%)`;
+    case 'triangles':
+      return `linear-gradient(135deg, ${theme.brandLight} 0 50%, #ffffff 50%)`;
+    case 'terminal':
+      return 'linear-gradient(to bottom, #1b2330 0 22%, #0c1018 22%)';
+    case 'shield':
+      return `radial-gradient(circle at 80% 82%, ${theme.brandLight} 0, ${theme.brandLight} 30%, #ffffff 32%)`;
+    case 'sidebar':
+      return `linear-gradient(to right, ${theme.brand} 0 26%, #ffffff 26%)`;
+    case 'topaccent':
+      return `linear-gradient(to bottom, ${theme.brand} 0 14%, #ffffff 14%)`;
     default:
       return `linear-gradient(to bottom, #ffffff 0%, #ffffff 88%, ${theme.brand} 88%, ${theme.brand} 100%)`;
   }
+}
+
+// Builds the inline style for a header/footer thumbnail from the style's preview tokens.
+function hfThumbStyle(preview, theme) {
+  const pv = preview || {};
+  const tok = (t) => (t === 'brand' ? theme.brand : t === 'dark' ? theme.brandDark : t === 'accent' ? theme.accent : t === 'tint' ? theme.brandLight : null);
+  const barCol = pv.barColor ? tok(pv.barColor) : '#ffffff';
+  let bg = '#ffffff';
+  if (pv.barPlace === 'both') bg = barCol;
+  else if (pv.barPlace === 'header') bg = `linear-gradient(to bottom, ${barCol} 0 45%, #ffffff 45%)`;
+  else if (pv.barPlace === 'footer') bg = `linear-gradient(to bottom, #ffffff 0 55%, ${barCol} 55%)`;
+  let extra = '';
+  if (pv.rulePlace) { const rc = tok(pv.ruleColor) || theme.brand; extra += `border-top:3px solid ${rc}; border-bottom:3px solid ${rc};`; }
+  if (pv.edge) { const ec = tok(pv.edge); extra += `box-shadow: inset 0 4px 0 ${ec}, inset 0 -4px 0 ${ec};`; }
+  return `background:${bg}; ${extra} height:40px;`;
 }
 
 async function renderDesignTab() {
@@ -233,10 +268,8 @@ async function renderDesignTab() {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'cover-style-card' + (currentProject.header_footer_style === s.key ? ' selected' : '');
-    const barColor = s.key === 'brand-bar' ? currentTheme.brand : s.key === 'dark-bar' ? currentTheme.brandDark : '#ffffff';
-    const barBorder = s.key === 'line-accent' ? `border-top:3px solid ${currentTheme.brand}; border-bottom:3px solid ${currentTheme.brand};` : '';
     card.innerHTML = `
-      <div class="cover-style-thumb" style="background:${barColor}; ${barBorder} height:40px;"></div>
+      <div class="cover-style-thumb" style="${hfThumbStyle(s.preview, currentTheme)}"></div>
       <div class="name">${escapeHtml(s.name)}</div>
       <div class="desc">${escapeHtml(s.description)}</div>
     `;
