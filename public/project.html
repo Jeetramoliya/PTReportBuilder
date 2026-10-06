@@ -19,9 +19,9 @@
         <div class="subtitle" id="projectMeta"></div>
       </div>
       <div class="row">
-        <a class="btn secondary" id="previewBtn" target="_blank">Preview Report</a>
+        <a class="btn secondary" id="previewBtn" target="_blank" data-tip="Open the live HTML report in a new tab to review before exporting">Preview Report</a>
         <div class="dropdown">
-          <button type="button" class="btn" id="exportMenuBtn">Export &#9662;</button>
+          <button type="button" class="btn tip-right" id="exportMenuBtn" data-tip="Download the report as PDF or DOCX, or the findings as CSV/Excel">Export &#9662;</button>
           <div class="dropdown-menu hidden" id="exportMenu">
             <a id="downloadBtn">Report — PDF</a>
             <a id="downloadDocxBtn">Report — DOCX</a>
@@ -33,11 +33,11 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="overview">Overview</button>
-      <button class="tab-btn" data-tab="design">Design</button>
-      <button class="tab-btn" data-tab="scope">Scope</button>
-      <button class="tab-btn" data-tab="findings">Findings</button>
-      <button class="tab-btn" data-tab="import">Import</button>
+      <button class="tab-btn active" data-tab="overview" data-tip="Client info, report title, summary and project settings">Overview</button>
+      <button class="tab-btn" data-tab="design" data-tip="Theme colour, cover style, fonts, wordmark and watermark">Design</button>
+      <button class="tab-btn" data-tab="scope" data-tip="Targets, endpoints and apps covered by this engagement">Scope</button>
+      <button class="tab-btn" data-tab="findings" data-tip="Add and manage vulnerabilities, PoC steps and evidence">Findings</button>
+      <button class="tab-btn" data-tab="import" data-tip="Import findings from Burp, Nessus or Nuclei scan exports">Import</button>
     </div>
 
     <div class="tab-panel active" id="tab-overview">
@@ -174,9 +174,9 @@
 
             <div class="wm-controls">
               <div class="wm-toggles">
-                <button type="button" class="wm-toggle" data-wm="wordmark_bold" title="Bold" style="font-weight:800;">B</button>
-                <button type="button" class="wm-toggle" data-wm="wordmark_italic" title="Italic" style="font-style:italic;">I</button>
-                <button type="button" class="wm-toggle" data-wm="wordmark_underline" title="Underline" style="text-decoration:underline;">U</button>
+                <button type="button" class="wm-toggle" data-wm="wordmark_bold" data-tip="Bold" style="font-weight:800;">B</button>
+                <button type="button" class="wm-toggle" data-wm="wordmark_italic" data-tip="Italic" style="font-style:italic;">I</button>
+                <button type="button" class="wm-toggle" data-wm="wordmark_underline" data-tip="Underline" style="text-decoration:underline;">U</button>
               </div>
               <div class="wm-field">
                 <label>Size</label>
