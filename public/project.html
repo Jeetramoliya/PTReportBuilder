@@ -137,9 +137,11 @@
           </div>
         </div>
 
-        <div id="brandingUploadState" style="margin-top:12px;">
+        <div id="brandingUploadState" class="dropzone" style="margin-top:12px;">
           <label style="display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.02em;">Upload a Logo</label>
           <input type="file" id="logoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+          <div class="dropzone-hint">Drag &amp; drop an image here, or click to choose.</div>
+          <img id="logoUploadPreview" class="logo-preview hidden" style="margin-top:10px;" />
           <div class="helptext">PNG, JPG, SVG or WEBP, max 5MB. Uploading a logo clears any company name below.</div>
         </div>
       </div>
@@ -340,7 +342,7 @@
   <div class="modal-backdrop hidden" id="newFindingModal">
     <div class="modal">
       <h2>Add Finding</h2>
-      <form id="newFindingForm">
+      <form id="newFindingForm" novalidate>
         <div class="form-row">
           <label>Start from Template (optional)</label>
           <select id="templateSelect">
@@ -350,6 +352,7 @@
         <div class="form-row">
           <label>Title *</label>
           <input type="text" name="title" required placeholder="e.g. Stored Cross-Site Scripting" />
+          <div class="field-error">A title is required.</div>
         </div>
         <div class="form-grid">
           <div class="form-row">

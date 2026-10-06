@@ -51,6 +51,25 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
+// Change the signed-in user's password (requires the current one). Self-authenticating.
+router.post('/change-password', async (req, res, next) => {
+  try {
+    const cookies = auth.parseCookies(req);
+    const user = await auth.userForSession(cookies[auth.SESSION_COOKIE]);
+    if (!user) return res.status(401).json({ error: 'Not signed in' });
+    const newPassword = req.body.new_password || '';
+    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    const row = await auth.findUserByEmail(user.email);
+    if (!row || !auth.verifyPassword(req.body.current_password || '', row.password_hash)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    await auth.updatePassword(user.id, newPassword);
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Permanently delete the signed-in user and all their data. This router is mounted before
 // requireAuth, so it resolves the session itself (like /me).
 router.delete('/account', async (req, res, next) => {

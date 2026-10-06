@@ -28,13 +28,33 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   }
 });
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Marks/clears a field's inline error by toggling .invalid on its .form-row.
+function setFieldValid(input, ok) {
+  const row = input.closest('.form-row');
+  if (row) row.classList.toggle('invalid', !ok);
+  return ok;
+}
+
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target).entries());
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const emailOk = setFieldValid(form.email, EMAIL_RE.test((data.email || '').trim()));
+  const pwOk = setFieldValid(form.password, (data.password || '').length >= 6);
+  if (!emailOk || !pwOk) return;
   try {
     await API.post('/api/auth/signup', data);
     window.location.href = '/index.html';
   } catch (err) {
+    // Surface server-side field errors inline where we can.
+    if (/email/i.test(err.message)) setFieldValid(form.email, false);
+    if (/password/i.test(err.message)) setFieldValid(form.password, false);
     toast(err.message, true);
   }
+});
+// Clear a field's error as soon as the user edits it.
+document.querySelectorAll('#signupForm input').forEach((inp) => {
+  inp.addEventListener('input', () => { const r = inp.closest('.form-row'); if (r) r.classList.remove('invalid'); });
 });

@@ -406,17 +406,37 @@ document.getElementById('overviewForm').addEventListener('submit', async (e) => 
   }
 });
 
-document.getElementById('logoInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
+async function uploadLogoFile(file) {
   if (!file) return;
+  // Instant client-side preview, then upload (uploading is near-instant anyway).
+  const prev = document.getElementById('logoUploadPreview');
+  if (prev && /^image\//.test(file.type)) {
+    prev.src = URL.createObjectURL(file);
+    prev.classList.remove('hidden');
+  }
   try {
     await API.uploadLogo(projectId, file);
     toast('Logo updated');
     loadProject();
   } catch (err) {
     toast(err.message, true);
+    if (prev) prev.classList.add('hidden');
   }
-});
+}
+
+document.getElementById('logoInput').addEventListener('change', (e) => uploadLogoFile(e.target.files[0]));
+
+// Drag-and-drop onto the upload zone.
+const logoZone = document.getElementById('brandingUploadState');
+if (logoZone) {
+  ['dragenter', 'dragover'].forEach((ev) => logoZone.addEventListener(ev, (e) => {
+    e.preventDefault(); logoZone.classList.add('dragover');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => logoZone.addEventListener(ev, (e) => {
+    e.preventDefault(); if (ev === 'dragleave' && logoZone.contains(e.relatedTarget)) return; logoZone.classList.remove('dragover');
+  }));
+  logoZone.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) uploadLogoFile(f); });
+}
 
 document.getElementById('deleteProjectBtn').addEventListener('click', async () => {
   if (!confirm('Delete this entire project, including all findings and evidence? This cannot be undone.')) return;
@@ -540,12 +560,29 @@ newFindingModal.addEventListener('click', (e) => { if (e.target === newFindingMo
 
 document.getElementById('newFindingForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target).entries());
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  // Inline-validate the required title.
+  const titleRow = form.title.closest('.form-row');
+  if (!(data.title || '').trim()) { if (titleRow) titleRow.classList.add('invalid'); form.title.focus(); return; }
+  if (titleRow) titleRow.classList.remove('invalid');
   try {
     const finding = await API.createFinding(projectId, data);
     window.location.href = `/finding.html?id=${finding.id}&project=${projectId}`;
   } catch (err) {
     toast(err.message, true);
+  }
+});
+
+// Keyboard: Esc closes the finding modal; Ctrl/Cmd+S saves the open form.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') newFindingModal.classList.add('hidden');
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    if (!newFindingModal.classList.contains('hidden')) { document.getElementById('newFindingForm').requestSubmit(); return; }
+    const activePanel = document.querySelector('.tab-panel.active');
+    const form = activePanel && activePanel.querySelector('form');
+    if (form) form.requestSubmit();
   }
 });
 

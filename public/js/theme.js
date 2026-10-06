@@ -8,11 +8,39 @@
   const current = ACCENTS.includes(saved) ? saved : 'violet';
   document.documentElement.dataset.accent = current;
 
+  const MODE_KEY = 'vapt_theme';
+  let mode;
+  try { mode = localStorage.getItem(MODE_KEY); } catch (e) { mode = null; }
+  mode = mode === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = mode;
+
   function build() {
     if (document.querySelector('.accent-picker')) return;
     const picker = document.createElement('div');
     picker.className = 'accent-picker';
-    picker.innerHTML = '<span class="ap-label" aria-hidden="true">&#127912;</span>';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'theme-toggle';
+    toggle.setAttribute('data-tip', 'Light / dark mode');
+    const setToggleIcon = () => { toggle.textContent = document.documentElement.dataset.theme === 'light' ? '☾' : '☀'; };
+    setToggleIcon();
+    toggle.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem(MODE_KEY, next); } catch (e) { /* ignore */ }
+      setToggleIcon();
+    });
+    picker.appendChild(toggle);
+    const sep = document.createElement('span');
+    sep.className = 'accent-sep';
+    picker.appendChild(sep);
+
+    const label = document.createElement('span');
+    label.className = 'ap-label';
+    label.setAttribute('aria-hidden', 'true');
+    label.innerHTML = '&#127912;';
+    picker.appendChild(label);
     ACCENTS.forEach((a) => {
       const dot = document.createElement('button');
       dot.type = 'button';

@@ -36,6 +36,10 @@ function findUserByEmail(email) {
   return db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
 }
 
+async function updatePassword(userId, newPassword) {
+  await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), userId);
+}
+
 function getUserById(id) {
   return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
 }
@@ -92,6 +96,7 @@ module.exports = {
   createUser,
   findUserByEmail,
   getUserById,
+  updatePassword,
   createSession,
   destroySession,
   userForSession,

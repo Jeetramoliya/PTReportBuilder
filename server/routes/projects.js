@@ -47,7 +47,12 @@ router.get('/', async (req, res, next) => {
     const projects = await db
       .prepare(
         `SELECT p.*,
-          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id) as finding_count
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id) as finding_count,
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Critical') as sev_critical,
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'High') as sev_high,
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Medium') as sev_medium,
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Low') as sev_low,
+          (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Info') as sev_info
          FROM projects p WHERE p.user_id = ? ORDER BY p.updated_at DESC`
       )
       .all(req.userId);

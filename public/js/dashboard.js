@@ -2,8 +2,14 @@ const grid = document.getElementById('projectsGrid');
 const emptyState = document.getElementById('emptyState');
 const modal = document.getElementById('newProjectModal');
 
-function severityDot(count, label, cls) {
-  return count ? `<span class="badge ${cls}">${count} ${label}</span>` : '';
+function severityChips(p) {
+  const defs = [
+    ['sev_critical', 'C', 'c-critical'], ['sev_high', 'H', 'c-high'], ['sev_medium', 'M', 'c-medium'],
+    ['sev_low', 'L', 'c-low'], ['sev_info', 'I', 'c-info'],
+  ];
+  const chips = defs.filter((d) => p[d[0]] > 0).map((d) => `<span class="sev-chip ${d[2]}">${p[d[0]]} ${d[1]}</span>`);
+  if (!chips.length) return '<span class="sev-chip c-none">No findings</span>';
+  return chips.join('');
 }
 
 async function loadProjects() {
@@ -20,6 +26,7 @@ async function loadProjects() {
     card.innerHTML = `
       <div class="name">${escapeHtml(p.name)}</div>
       <div class="meta">${escapeHtml(p.client_name || 'No client set')}</div>
+      <div class="sev-chips">${severityChips(p)}</div>
       <div class="meta">${p.finding_count} finding(s) &middot; updated ${new Date(p.updated_at).toLocaleDateString()}</div>
       <div class="actions">
         <a class="btn small" href="/project.html?id=${p.id}">Open</a>
@@ -78,6 +85,30 @@ document.getElementById('logoutLink').addEventListener('click', async (e) => {
   try { await API.authLogout(); } catch (err) { /* ignore */ }
   window.location.href = '/login.html';
 });
+
+// Esc closes the open modal; a CTA button in the empty state opens the New Project modal.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') modal.classList.add('hidden');
+});
+const emptyCta = document.getElementById('emptyCreateBtn');
+if (emptyCta) emptyCta.addEventListener('click', () => document.getElementById('newProjectBtn').click());
+
+// Change password (while logged in)
+const pwForm = document.getElementById('changePasswordForm');
+if (pwForm) {
+  pwForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(pwForm).entries());
+    if ((data.new_password || '').length < 6) { toast('New password must be at least 6 characters', true); return; }
+    try {
+      await API.post('/api/auth/change-password', data);
+      pwForm.reset();
+      toast('Password changed');
+    } catch (err) {
+      toast(err.message, true);
+    }
+  });
+}
 
 document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
   // Irreversible: require typing DELETE so it can't be a stray click.

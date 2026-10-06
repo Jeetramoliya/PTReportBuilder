@@ -28,6 +28,25 @@
     <div id="projectsGrid" class="grid"></div>
     <div id="emptyState" class="empty-state hidden">
       <p>No projects yet. Create your first pentest project to get started.</p>
+      <button class="btn" id="emptyCreateBtn" style="margin-top:12px;">+ New Project</button>
+    </div>
+
+    <div class="card" id="accountCard" style="margin-top:40px;">
+      <h2>Account</h2>
+      <div class="helptext">Change the password for your account. You'll stay signed in on this device.</div>
+      <form id="changePasswordForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Current Password</label>
+            <input type="password" name="current_password" autocomplete="current-password" required />
+          </div>
+          <div class="form-row">
+            <label>New Password (min 6 chars)</label>
+            <input type="password" name="new_password" autocomplete="new-password" required />
+          </div>
+        </div>
+        <button type="submit" class="btn secondary">Change Password</button>
+      </form>
     </div>
 
     <div class="card" style="margin-top:40px; border-color:rgba(240,56,79,0.35);">
