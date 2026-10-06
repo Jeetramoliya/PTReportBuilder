@@ -88,6 +88,8 @@ const API = {
   adminStats() { return this.get('/api/admin/stats'); },
   adminUsers() { return this.get('/api/admin/users'); },
   adminDeleteUser(id) { return this.del(`/api/admin/users/${id}`); },
+  adminCreateUser(data) { return this.post('/api/admin/users', data); },
+  adminSetAdmin(id, is_admin) { return this.request('PATCH', `/api/admin/users/${id}/admin`, { is_admin }); },
   deleteAccount() { return this.del('/api/auth/account'); },
 };
 

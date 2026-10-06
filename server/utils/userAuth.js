@@ -25,11 +25,11 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
-async function createUser(email, name, password) {
+async function createUser(email, name, password, opts = {}) {
   const id = nanoid();
-  await db.prepare('INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)')
-    .run(id, normalizeEmail(email), String(name || '').trim(), hashPassword(password));
-  return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
+  await db.prepare('INSERT INTO users (id, email, name, password_hash, is_admin) VALUES (?, ?, ?, ?, ?)')
+    .run(id, normalizeEmail(email), String(name || '').trim(), hashPassword(password), opts.isAdmin ? 1 : 0);
+  return db.prepare('SELECT id, email, name, is_admin, created_at FROM users WHERE id = ?').get(id);
 }
 
 function findUserByEmail(email) {
@@ -38,6 +38,10 @@ function findUserByEmail(email) {
 
 async function updatePassword(userId, newPassword) {
   await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), userId);
+}
+
+async function setAdmin(userId, flag) {
+  await db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(flag ? 1 : 0, userId);
 }
 
 // Creates any admin accounts (ADMIN_EMAILS) that don't exist yet, using ADMIN_PASSWORD.
@@ -55,7 +59,7 @@ async function seedAdmins() {
 }
 
 function getUserById(id) {
-  return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare('SELECT id, email, name, is_admin, created_at FROM users WHERE id = ?').get(id);
 }
 
 async function createSession(userId) {
@@ -111,6 +115,7 @@ module.exports = {
   findUserByEmail,
   getUserById,
   updatePassword,
+  setAdmin,
   seedAdmins,
   createSession,
   destroySession,

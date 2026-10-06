@@ -1,6 +1,6 @@
-// Admin accounts are designated by the ADMIN_EMAILS env var (comma-separated), so admin
-// rights live in config, not in a committed credential. A normal account whose email is in
-// that list is an admin.
+// Admin status has two sources:
+//   - Env admins (ADMIN_EMAILS): the un-removable owner accounts, always admin.
+//   - DB admins (users.is_admin): granted/revoked at runtime by another admin.
 function adminEmails() {
   return (process.env.ADMIN_EMAILS || '')
     .split(',')
@@ -8,8 +8,15 @@ function adminEmails() {
     .filter(Boolean);
 }
 
-function isAdmin(email) {
+// True for the fixed owner accounts configured in the environment. These cannot be demoted
+// or deleted through the admin UI.
+function isEnvAdmin(email) {
   return !!email && adminEmails().includes(String(email).toLowerCase());
 }
 
-module.exports = { adminEmails, isAdmin };
+// Effective admin check for a user row (env OR the DB flag).
+function isAdminUser(user) {
+  return !!(user && (Number(user.is_admin) === 1 || isEnvAdmin(user.email)));
+}
+
+module.exports = { adminEmails, isEnvAdmin, isAdminUser };

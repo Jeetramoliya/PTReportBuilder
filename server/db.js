@@ -65,6 +65,7 @@ const SCHEMA = [
     email TEXT NOT NULL UNIQUE,
     name TEXT DEFAULT '',
     password_hash TEXT NOT NULL,
+    is_admin INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS user_sessions (
@@ -206,6 +207,7 @@ const SCHEMA = [
 // every boot; "duplicate column" errors are expected and ignored.
 const MIGRATIONS = [
   "ALTER TABLE projects ADD COLUMN share_token TEXT DEFAULT ''",
+  'ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0',
 ];
 
 async function initDb() {
