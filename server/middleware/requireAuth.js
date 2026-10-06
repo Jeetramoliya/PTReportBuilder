@@ -3,7 +3,7 @@ const auth = require('../utils/userAuth');
 // Pages and assets reachable without a session (so the login page can render and submit).
 const PUBLIC_API = ['/api/auth/login', '/api/auth/signup', '/api/auth/me', '/api/auth/logout'];
 const PUBLIC_PAGES = ['/login.html', '/reset.html'];
-const PUBLIC_PREFIXES = ['/css/', '/js/'];
+const PUBLIC_PREFIXES = ['/css/', '/js/', '/img/'];
 
 module.exports = async function requireAuth(req, res, next) {
   try {

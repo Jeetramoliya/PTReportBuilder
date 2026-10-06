@@ -426,6 +426,7 @@ tr:hover td { background: rgba(255, 255, 255, 0.035); }
 }
 .brandmark:hover { opacity: 1; }
 .brandmark strong { color: #e24a42; font-weight: 800; letter-spacing: 0.06em; }
+.brandmark .brandmark-logo { height: 22px; width: auto; display: block; }
 html[data-theme="light"] .brandmark { background: rgba(255, 255, 255, 0.82); color: var(--muted); }
 /* Keep toasts clear of the badge */
 .toast { bottom: 70px; }

@@ -56,17 +56,27 @@
     });
     document.body.appendChild(picker);
 
-    // "Powered by BlackRoot" brand badge, bottom-right.
+    // "Powered by BlackRoot" brand badge, bottom-right. Uses the real logo asset at
+    // /img/blackroot.(svg|png); if that file isn't present, falls back to a text wordmark.
     if (!document.querySelector('.brandmark')) {
       const mark = document.createElement('div');
       mark.className = 'brandmark';
-      mark.innerHTML =
-        '<svg viewBox="0 0 48 52" width="18" height="20" fill="none" stroke="#e24a42" stroke-width="3" stroke-linejoin="round">'
-        + '<path d="M24 2 L44 10 V26 C44 40 24 50 24 50 C24 50 4 40 4 26 V10 Z"/>'
-        + '<path d="M19 25 V19 a5 5 0 0 1 10 0 V25"/>'
-        + '<rect x="16" y="25" width="16" height="12" rx="2" fill="#e24a42" stroke="none"/>'
-        + '</svg>'
-        + '<span>Powered by <strong>BLACKROOT</strong></span>';
+      const pre = document.createElement('span');
+      pre.className = 'bm-pre';
+      pre.textContent = 'Powered by';
+      const logo = document.createElement('img');
+      logo.className = 'brandmark-logo';
+      logo.alt = 'BlackRoot';
+      logo.src = '/img/blackroot.svg';
+      // Fall back svg -> png -> text wordmark.
+      logo.addEventListener('error', () => {
+        if (logo.src.endsWith('.svg')) { logo.src = '/img/blackroot.png'; return; }
+        const strong = document.createElement('strong');
+        strong.textContent = 'BLACKROOT';
+        logo.replaceWith(strong);
+      });
+      mark.appendChild(pre);
+      mark.appendChild(logo);
       document.body.appendChild(mark);
     }
   }
