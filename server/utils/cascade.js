@@ -71,12 +71,14 @@ async function deleteProjectCascade(projectId) {
   await db.prepare('DELETE FROM scope_items WHERE project_id = ?').run(projectId);
   const proj = await db.prepare('SELECT logo_path FROM projects WHERE id = ?').get(projectId);
   if (proj && proj.logo_path) await deleteUpload(proj.logo_path);
+  await db.prepare('DELETE FROM project_collaborators WHERE project_id = ?').run(projectId);
   await db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
 }
 
 async function deleteUserCascade(userId) {
   const projects = await db.prepare('SELECT id FROM projects WHERE user_id = ?').all(userId);
   for (const p of projects) await deleteProjectCascade(p.id);
+  await db.prepare('DELETE FROM project_collaborators WHERE user_id = ?').run(userId); // memberships on others' projects
   await db.prepare('DELETE FROM user_sessions WHERE user_id = ?').run(userId);
   await db.prepare('DELETE FROM users WHERE id = ?').run(userId);
 }

@@ -12,6 +12,8 @@ const { deleteProjectCascade, cloneProject } = require('../utils/cascade');
 const { coerceProjectField, SKIP, clampStr } = require('../utils/validate');
 const { isAdminUser } = require('../utils/admin');
 const { projectLimit } = require('../utils/plans');
+const { projectRole, canWrite } = require('../utils/access');
+const userAuth = require('../utils/userAuth');
 
 const router = express.Router();
 
@@ -36,13 +38,20 @@ const logoUpload = multer({
   },
 });
 
-// Only returns the project if it belongs to the requesting user; otherwise 404.
-async function getProjectOr404(id, res, userId) {
-  const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(id, userId);
-  if (!project) {
+// Returns the project if the user is owner or a collaborator; otherwise 404. Pass
+// { write: true } for mutating routes — viewers get 403. The resolved role is on _role.
+async function getProjectOr404(id, res, userId, opts = {}) {
+  const role = await projectRole(id, userId);
+  if (!role) {
     res.status(404).json({ error: 'Project not found' });
     return null;
   }
+  if (opts.write && !canWrite(role)) {
+    res.status(403).json({ error: 'You have read-only access to this project.' });
+    return null;
+  }
+  const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(id);
+  project._role = role;
   return project;
 }
 
@@ -51,15 +60,18 @@ router.get('/', async (req, res, next) => {
     const projects = await db
       .prepare(
         `SELECT p.*,
+          (CASE WHEN p.user_id = ? THEN 'owner' ELSE 'shared' END) as my_role,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id) as finding_count,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Critical') as sev_critical,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'High') as sev_high,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Medium') as sev_medium,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Low') as sev_low,
           (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id AND f.severity = 'Info') as sev_info
-         FROM projects p WHERE p.user_id = ? ORDER BY p.updated_at DESC`
+         FROM projects p
+         WHERE p.user_id = ? OR p.id IN (SELECT project_id FROM project_collaborators WHERE user_id = ?)
+         ORDER BY p.updated_at DESC`
       )
-      .all(req.userId);
+      .all(req.userId, req.userId, req.userId);
     res.json(projects);
   } catch (e) {
     next(e);
@@ -137,7 +149,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
     if (!project) return;
     const fields = [
       'name', 'client_name', 'client_address', 'client_website', 'company_name', 'wordmark_style',
@@ -180,7 +192,8 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
+    if (project && project._role !== 'owner') return res.status(403).json({ error: 'Only the project owner can delete it.' });
     if (!project) return;
     await deleteProjectCascade(project.id);
     res.status(204).end();
@@ -205,6 +218,7 @@ router.post('/:id/share', async (req, res, next) => {
   try {
     const project = await getProjectOr404(req.params.id, res, req.userId);
     if (!project) return;
+    if (project._role !== 'owner') return res.status(403).json({ error: 'Only the project owner can manage the share link.' });
     let token = project.share_token;
     if (!token) {
       token = crypto.randomBytes(24).toString('hex');
@@ -220,6 +234,7 @@ router.delete('/:id/share', async (req, res, next) => {
   try {
     const project = await getProjectOr404(req.params.id, res, req.userId);
     if (!project) return;
+    if (project._role !== 'owner') return res.status(403).json({ error: 'Only the project owner can manage the share link.' });
     await db.prepare("UPDATE projects SET share_token = '' WHERE id = ?").run(project.id);
     res.status(204).end();
   } catch (e) {
@@ -229,7 +244,7 @@ router.delete('/:id/share', async (req, res, next) => {
 
 router.post('/:id/logo', logoUpload.single('logo'), async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
     if (!project) return;
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     if (project.logo_path) await deleteUpload(project.logo_path);
@@ -245,7 +260,7 @@ router.post('/:id/logo', logoUpload.single('logo'), async (req, res, next) => {
 
 router.delete('/:id/logo', async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
     if (!project) return;
     if (project.logo_path) await deleteUpload(project.logo_path);
     await db.prepare("UPDATE projects SET logo_path = '', updated_at = datetime('now') WHERE id = ?").run(project.id);
@@ -257,7 +272,7 @@ router.delete('/:id/logo', async (req, res, next) => {
 
 router.post('/:id/logo-color', async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
     if (!project) return;
     if (!project.logo_path) return res.status(400).json({ error: 'Upload a logo first' });
     const up = await getUpload(project.logo_path);
@@ -279,7 +294,7 @@ router.post('/:id/logo-color', async (req, res, next) => {
 
 router.post('/:id/scope', async (req, res, next) => {
   try {
-    const project = await getProjectOr404(req.params.id, res, req.userId);
+    const project = await getProjectOr404(req.params.id, res, req.userId, { write: true });
     if (!project) return;
     const { group_name, item_type, tenant, url, app_name, app_version, platform } = req.body;
     const type = item_type === 'app' ? 'app' : 'url';
@@ -305,12 +320,11 @@ router.post('/:id/scope', async (req, res, next) => {
   }
 });
 
-// Fetches a scope item only if its parent project belongs to the user.
-function getScopeItemOwned(scopeId, userId) {
-  return db.prepare(
-    `SELECT s.* FROM scope_items s JOIN projects p ON p.id = s.project_id
-     WHERE s.id = ? AND p.user_id = ?`
-  ).get(scopeId, userId);
+// Fetches a scope item only if the user can write to its parent project (owner/editor).
+async function getScopeItemOwned(scopeId, userId) {
+  const item = await db.prepare('SELECT * FROM scope_items WHERE id = ?').get(scopeId);
+  if (!item) return null;
+  return canWrite(await projectRole(item.project_id, userId)) ? item : null;
 }
 
 router.put('/scope/:scopeId', async (req, res, next) => {
@@ -338,6 +352,46 @@ router.delete('/scope/:scopeId', async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+// --- Collaborators ---
+router.get('/:id/collaborators', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    const rows = await db.prepare(
+      `SELECT c.user_id, c.role, u.email, u.name FROM project_collaborators c
+       JOIN users u ON u.id = c.user_id WHERE c.project_id = ? ORDER BY u.email`
+    ).all(project.id);
+    res.json({ my_role: project._role, owner_id: project.user_id, collaborators: rows });
+  } catch (e) { next(e); }
+});
+
+router.post('/:id/collaborators', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    if (project._role !== 'owner') return res.status(403).json({ error: 'Only the owner can manage collaborators.' });
+    const email = userAuth.normalizeEmail(req.body.email);
+    const role = req.body.role === 'viewer' ? 'viewer' : 'editor';
+    const target = await userAuth.findUserByEmail(email);
+    if (!target) return res.status(404).json({ error: 'No account with that email — ask them to sign up first.' });
+    if (target.id === project.user_id) return res.status(400).json({ error: 'That user already owns this project.' });
+    const existing = await db.prepare('SELECT id FROM project_collaborators WHERE project_id = ? AND user_id = ?').get(project.id, target.id);
+    if (existing) await db.prepare('UPDATE project_collaborators SET role = ? WHERE id = ?').run(role, existing.id);
+    else await db.prepare('INSERT INTO project_collaborators (id, project_id, user_id, role) VALUES (?, ?, ?, ?)').run(nanoid(), project.id, target.id, role);
+    res.status(201).json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+router.delete('/:id/collaborators/:userId', async (req, res, next) => {
+  try {
+    const project = await getProjectOr404(req.params.id, res, req.userId);
+    if (!project) return;
+    if (project._role !== 'owner') return res.status(403).json({ error: 'Only the owner can manage collaborators.' });
+    await db.prepare('DELETE FROM project_collaborators WHERE project_id = ? AND user_id = ?').run(project.id, req.params.userId);
+    res.status(204).end();
+  } catch (e) { next(e); }
 });
 
 module.exports = router;

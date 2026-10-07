@@ -4,6 +4,7 @@ const { nanoid } = require('nanoid');
 const db = require('../db');
 const { detectAndParse } = require('../utils/scanParsers');
 const { riskFromLikelihoodImpact } = require('../utils/riskMatrix');
+const { projectRole, canWrite } = require('../utils/access');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -19,8 +20,8 @@ const SEVERITY_TO_IMPACT_LIKELIHOOD = {
 // Parse a scanner export and return a preview list — nothing is saved yet.
 router.post('/projects/:id/preview', upload.single('file'), async (req, res, next) => {
   try {
-    const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+    const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    if (!project || !(await projectRole(project.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const content = req.file.buffer.toString('utf8');
@@ -45,8 +46,10 @@ router.post('/projects/:id/preview', upload.single('file'), async (req, res, nex
 // Create findings from a previously-parsed, user-confirmed selection.
 router.post('/projects/:id/commit', async (req, res, next) => {
   try {
-    const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+    const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+    const role = project ? await projectRole(project.id, req.userId) : null;
+    if (!project || !role) return res.status(404).json({ error: 'Project not found' });
+    if (!canWrite(role)) return res.status(403).json({ error: 'You have read-only access to this project.' });
     const items = Array.isArray(req.body.findings) ? req.body.findings : [];
     if (!items.length) return res.status(400).json({ error: 'No findings selected' });
 

@@ -156,6 +156,20 @@
       </div>
 
       <div class="card">
+        <h2>Collaborators</h2>
+        <div class="helptext">Share this project with teammates. <strong>Editors</strong> can make changes; <strong>viewers</strong> are read-only. They must already have an account.</div>
+        <div id="collabList"></div>
+        <form id="collabForm" class="row wrap" style="margin-top:10px; gap:8px;">
+          <input type="email" name="email" placeholder="teammate@example.com" style="flex:1; min-width:200px;" required />
+          <select name="role" style="width:auto;">
+            <option value="editor">Editor</option>
+            <option value="viewer">Viewer</option>
+          </select>
+          <button type="submit" class="btn">Add</button>
+        </form>
+      </div>
+
+      <div class="card">
         <h2>Client Share Link</h2>
         <div class="helptext">Generate a read-only link to this report that a client can open in a browser without an account. Revoke it any time.</div>
         <div id="shareState"></div>

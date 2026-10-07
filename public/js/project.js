@@ -72,8 +72,47 @@ async function loadProject() {
   renderScope(currentProject.scope);
   renderFindings(currentProject.findings);
   renderShare();
+  renderCollaborators();
   await renderDesignTab();
 }
+
+async function renderCollaborators() {
+  const list = document.getElementById('collabList');
+  const form = document.getElementById('collabForm');
+  if (!list) return;
+  try {
+    const data = await API.getCollaborators(projectId);
+    const isOwner = data.my_role === 'owner';
+    form.classList.toggle('hidden', !isOwner); // only the owner manages collaborators
+    if (!data.collaborators.length) {
+      list.innerHTML = '<div class="helptext">No collaborators yet.</div>';
+    } else {
+      list.innerHTML = data.collaborators.map((c) => `
+        <div class="list-item">
+          <span class="content">${escapeHtml(c.name || c.email)} <span class="helptext" style="margin:0;">${escapeHtml(c.email)}</span></span>
+          <span class="badge badge-outline">${c.role}</span>
+          ${isOwner ? `<button class="btn small danger" data-collab="${c.user_id}">Remove</button>` : ''}
+        </div>`).join('');
+      list.querySelectorAll('[data-collab]').forEach((b) => b.addEventListener('click', async () => {
+        try { await API.removeCollaborator(projectId, b.dataset.collab); toast('Collaborator removed'); renderCollaborators(); } catch (e) { toast(e.message, true); }
+      }));
+    }
+  } catch (e) { /* ignore */ }
+}
+
+document.getElementById('collabForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = e.target.email.value.trim();
+  const role = e.target.role.value;
+  try {
+    await API.addCollaborator(projectId, email, role);
+    e.target.reset();
+    toast('Collaborator added');
+    renderCollaborators();
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
 
 function renderShare() {
   const state = document.getElementById('shareState');

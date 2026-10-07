@@ -5,8 +5,10 @@ const db = require('../db');
 
 const router = express.Router();
 
+const { projectRole } = require('../utils/access');
+// Read access (owner or collaborator) is enough to export findings.
 async function ownsProject(id, userId) {
-  return !!(await db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId));
+  return !!(await projectRole(id, userId));
 }
 
 const COLUMNS = [

@@ -37,8 +37,10 @@ async function getBrowser() {
   return browser;
 }
 
+const { projectRole } = require('../utils/access');
+// Read access (owner or collaborator) is enough to preview/export a report.
 async function ownsProject(id, userId) {
-  return !!(await db.prepare('SELECT 1 FROM projects WHERE id = ? AND user_id = ?').get(id, userId));
+  return !!(await projectRole(id, userId));
 }
 
 function normalize(s) {

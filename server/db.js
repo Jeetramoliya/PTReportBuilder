@@ -213,6 +213,14 @@ const SCHEMA = [
     data TEXT DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now'))
   )`,
+  // Teammates a project is shared with. role: 'editor' (read+write) or 'viewer' (read-only).
+  `CREATE TABLE IF NOT EXISTS project_collaborators (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT DEFAULT 'editor',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`,
   // Short-lived password reset tokens.
   `CREATE TABLE IF NOT EXISTS password_resets (
     token TEXT PRIMARY KEY,

@@ -7,6 +7,7 @@ const cvss = require('../utils/cvss');
 const { riskFromLikelihoodImpact } = require('../utils/riskMatrix');
 const { saveUpload, deleteUpload } = require('../uploads');
 const { validateFinding, SEVERITIES } = require('../utils/validate');
+const { projectRole, canWrite } = require('../utils/access');
 
 const router = express.Router();
 
@@ -29,28 +30,30 @@ async function loadFindingFull(id) {
   return finding;
 }
 
-// A finding is only accessible if its project belongs to the requesting user.
-async function getFindingOr404(id, res, userId) {
-  const finding = await db.prepare(
-    `SELECT f.* FROM findings f JOIN projects p ON p.id = f.project_id
-     WHERE f.id = ? AND p.user_id = ?`
-  ).get(id, userId);
-  if (!finding) {
+// A finding is accessible if the user can access its project (owner/editor/viewer).
+// Pass { write: true } for mutating routes — viewers get 403.
+async function getFindingOr404(id, res, userId, opts = {}) {
+  const finding = await db.prepare('SELECT * FROM findings WHERE id = ?').get(id);
+  const role = finding ? await projectRole(finding.project_id, userId) : null;
+  if (!finding || !role) {
     res.status(404).json({ error: 'Finding not found' });
+    return null;
+  }
+  if (opts.write && !canWrite(role)) {
+    res.status(403).json({ error: 'You have read-only access to this project.' });
     return null;
   }
   return finding;
 }
 
-// For sub-resources (urls, poc steps, references, retests) keyed by their own id:
-// resolve to the owning row only if the whole chain belongs to the user.
-function ownedSubRow(table, id, userId) {
-  return db.prepare(
-    `SELECT t.* FROM ${table} t
-       JOIN findings f ON f.id = t.finding_id
-       JOIN projects p ON p.id = f.project_id
-     WHERE t.id = ? AND p.user_id = ?`
-  ).get(id, userId);
+// Sub-resources (urls, poc steps, references, retests) keyed by their own id: resolve only if
+// the user can write to the owning project (these are all mutating operations).
+async function ownedSubRow(table, id, userId) {
+  const row = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+  if (!row) return null;
+  const finding = await db.prepare('SELECT project_id FROM findings WHERE id = ?').get(row.finding_id);
+  if (!finding) return null;
+  return canWrite(await projectRole(finding.project_id, userId)) ? row : null;
 }
 
 // ---- CVSS calculator (stateless helper) ----
@@ -66,8 +69,10 @@ router.post('/cvss/calculate', (req, res) => {
 // ---- Findings under a project ----
 router.post('/projects/:projectId/findings', async (req, res, next) => {
   try {
-    const project = await db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(req.params.projectId, req.userId);
-    if (!project) return res.status(404).json({ error: 'Project not found' });
+    const project = await db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.projectId);
+    const role = project ? await projectRole(project.id, req.userId) : null;
+    if (!project || !role) return res.status(404).json({ error: 'Project not found' });
+    if (!canWrite(role)) return res.status(403).json({ error: 'You have read-only access to this project.' });
     const v = validateFinding(req.body);
     const { title, category, scope_type, owasp_category, cwe_id, description, remediation } = v;
     if (!title) return res.status(400).json({ error: 'Finding title is required' });
@@ -118,7 +123,7 @@ router.get('/findings/:id', async (req, res, next) => {
 
 router.put('/findings/:id', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
 
     // Validate/clamp against the existing finding; title must not be blanked out.
@@ -173,7 +178,7 @@ router.put('/findings/:id', async (req, res, next) => {
 
 router.delete('/findings/:id', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const steps = await db.prepare('SELECT screenshot_path FROM poc_steps WHERE finding_id = ?').all(finding.id);
     for (const s of steps) if (s.screenshot_path) await deleteUpload(s.screenshot_path);
@@ -190,7 +195,7 @@ router.delete('/findings/:id', async (req, res, next) => {
 
 router.post('/findings/:id/reorder', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const direction = req.body.direction === 'up' ? -1 : 1;
     const siblings = await db
@@ -212,7 +217,7 @@ router.post('/findings/:id/reorder', async (req, res, next) => {
 // ---- Retest tracking ----
 router.post('/findings/:id/retest', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const { new_status, notes, event_date } = req.body;
     if (!new_status || !new_status.trim()) return res.status(400).json({ error: 'New status is required' });
@@ -241,7 +246,7 @@ router.delete('/retest/:eventId', async (req, res, next) => {
 // ---- Affected URLs ----
 router.post('/findings/:id/urls', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const { url } = req.body;
     if (!url || !url.trim()) return res.status(400).json({ error: 'URL is required' });
@@ -268,7 +273,7 @@ router.delete('/urls/:urlId', async (req, res, next) => {
 // ---- PoC steps (with optional screenshot) ----
 router.post('/findings/:id/poc', screenshotUpload.single('screenshot'), async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const id = nanoid();
     const maxRow = await db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM poc_steps WHERE finding_id = ?').get(finding.id);
@@ -324,7 +329,7 @@ router.delete('/poc/:stepId', async (req, res, next) => {
 // ---- References ----
 router.post('/findings/:id/references', async (req, res, next) => {
   try {
-    const finding = await getFindingOr404(req.params.id, res, req.userId);
+    const finding = await getFindingOr404(req.params.id, res, req.userId, { write: true });
     if (!finding) return;
     const { label, url } = req.body;
     if (!url || !url.trim()) return res.status(400).json({ error: 'Reference URL is required' });

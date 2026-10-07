@@ -37,6 +37,9 @@ const API = {
   cloneProject(id) { return this.post(`/api/projects/${id}/clone`); },
   createShare(id) { return this.post(`/api/projects/${id}/share`); },
   revokeShare(id) { return this.del(`/api/projects/${id}/share`); },
+  getCollaborators(id) { return this.get(`/api/projects/${id}/collaborators`); },
+  addCollaborator(id, email, role) { return this.post(`/api/projects/${id}/collaborators`, { email, role }); },
+  removeCollaborator(id, userId) { return this.del(`/api/projects/${id}/collaborators/${userId}`); },
   uploadLogo(id, file) {
     const fd = new FormData();
     fd.append('logo', file);
