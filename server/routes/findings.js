@@ -149,15 +149,18 @@ router.put('/findings/:id', async (req, res, next) => {
     }
 
     const identifier = v.identifier || finding.identifier;
+    const cvss4Score = Math.max(0, Math.min(10, Number(req.body.cvss4_score) || 0));
 
     await db.prepare(
       `UPDATE findings SET identifier = ?, title = ?, category = ?, scope_type = ?, owasp_category = ?, cwe_id = ?, description = ?, remediation = ?, status = ?,
         impact = ?, likelihood = ?, risk_rating = ?, severity = ?, cvss_vector = ?, cvss_score = ?,
+        cvss4_vector = ?, cvss4_score = ?, http_request = ?, http_response = ?, compliance = ?,
         updated_at = datetime('now')
        WHERE id = ?`
     ).run(
       identifier, v.title, v.category, v.scope_type, v.owasp_category, v.cwe_id, v.description, v.remediation, v.status,
-      impact, likelihood, risk, severity, cvssVector, cvssScore, finding.id
+      impact, likelihood, risk, severity, cvssVector, cvssScore,
+      v.cvss4_vector, cvss4Score, v.http_request, v.http_response, v.compliance, finding.id
     );
 
     await db.prepare("UPDATE projects SET updated_at = datetime('now') WHERE id = ?").run(finding.project_id);

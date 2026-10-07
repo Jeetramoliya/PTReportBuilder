@@ -77,6 +77,32 @@
           <label>Suggested Remediation</label>
           <textarea name="remediation" style="min-height:90px;" placeholder="How should the client fix this?"></textarea>
         </div>
+        <div class="helptext" style="margin-top:-6px;">Description &amp; remediation support Markdown: **bold**, *italic*, `code`, ```code blocks```, lists, and [links](https://…).</div>
+
+        <div class="form-grid">
+          <div class="form-row">
+            <label>CVSS v4.0 Vector (optional)</label>
+            <input type="text" name="cvss4_vector" placeholder="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/..." />
+          </div>
+          <div class="form-row">
+            <label>CVSS v4.0 Score (optional)</label>
+            <input type="text" name="cvss4_score" inputmode="decimal" placeholder="0.0 – 10.0" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Compliance Tags (comma-separated)</label>
+          <input type="text" name="compliance_tags" placeholder="e.g. PCI-DSS 6.5.1, ISO 27001 A.14.2.5, OWASP ASVS 5.3.3" />
+          <div class="helptext">Mapped to a Compliance Coverage table in the report.</div>
+        </div>
+        <div class="form-row">
+          <label>HTTP Request (optional)</label>
+          <textarea name="http_request" style="font-family:Consolas,monospace; font-size:12px; min-height:110px;" placeholder="GET /vulnerable?id=1 HTTP/1.1&#10;Host: target.example.com&#10;..."></textarea>
+        </div>
+        <div class="form-row">
+          <label>HTTP Response (optional)</label>
+          <textarea name="http_response" style="font-family:Consolas,monospace; font-size:12px; min-height:110px;" placeholder="HTTP/1.1 200 OK&#10;Content-Type: text/html&#10;..."></textarea>
+        </div>
+
         <div class="row" style="gap:10px;">
           <button type="submit" class="btn">Save Finding</button>
           <button type="button" class="btn secondary" id="saveTemplateBtn" data-tip="Save this finding to your reusable template library">Save as Template</button>

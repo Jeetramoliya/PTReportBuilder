@@ -134,7 +134,7 @@ router.put('/:id', async (req, res, next) => {
       'report_title', 'report_subtitle', 'iteration_label',
       'assessment_date', 'tester_name', 'prepared_by_org', 'tagline', 'executive_summary', 'methodology', 'finding_prefix',
       'theme', 'cover_style', 'font_family', 'custom_brand_color', 'watermark_text',
-      'page_background', 'header_footer_style', 'cover_alignment',
+      'page_background', 'header_footer_style', 'cover_alignment', 'report_layout',
     ];
     const updates = [];
     const values = [];

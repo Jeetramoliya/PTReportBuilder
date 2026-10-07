@@ -21,6 +21,7 @@ const PROJECT_ENUMS = {
   cover_alignment: COVER_ALIGNMENTS.map((a) => a.key),
   wordmark_style: WORDMARK_STYLES.map((w) => w.key),
   wordmark_size: ['small', 'medium', 'large', 'xlarge'],
+  report_layout: ['full', 'executive'],
 };
 const PROJECT_HEX = ['wordmark_color', 'wordmark_color2', 'custom_brand_color'];
 const PROJECT_BOOL = ['wordmark_bold', 'wordmark_italic', 'wordmark_underline'];
@@ -56,8 +57,21 @@ function validateFinding(body, prev) {
     description: clampStr(body.description, 20000),
     remediation: clampStr(body.remediation, 20000),
     cvss_vector: clampStr(body.cvss_vector, 160),
+    cvss4_vector: clampStr(body.cvss4_vector, 200),
+    http_request: clampStr(body.http_request, 20000),
+    http_response: clampStr(body.http_response, 20000),
+    compliance: normalizeCompliance(body.compliance),
     identifier: clampStr(body.identifier, 40),
   };
+}
+
+// Compliance tags: accept an array or JSON string of short labels; store as a JSON string.
+function normalizeCompliance(v) {
+  let arr = v;
+  if (typeof v === 'string') { try { arr = JSON.parse(v); } catch (e) { arr = v ? [v] : []; } }
+  if (!Array.isArray(arr)) return '[]';
+  const clean = arr.map((t) => clampStr(t, 80)).filter(Boolean).slice(0, 40);
+  return JSON.stringify(clean);
 }
 
 module.exports = { SKIP, coerceProjectField, validateFinding, clampStr, LEVELS, SEVERITIES };

@@ -122,6 +122,7 @@ const SCHEMA = [
     tagline TEXT DEFAULT 'Confidential & Proprietary',
     executive_summary TEXT DEFAULT '',
     methodology TEXT DEFAULT '',
+    report_layout TEXT DEFAULT 'full',
     share_token TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -153,9 +154,14 @@ const SCHEMA = [
     risk_rating TEXT DEFAULT 'Medium',
     cvss_vector TEXT DEFAULT '',
     cvss_score REAL DEFAULT 0,
+    cvss4_vector TEXT DEFAULT '',
+    cvss4_score REAL DEFAULT 0,
     status TEXT DEFAULT 'Open',
     description TEXT DEFAULT '',
     remediation TEXT DEFAULT '',
+    http_request TEXT DEFAULT '',
+    http_response TEXT DEFAULT '',
+    compliance TEXT DEFAULT '',
     sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -226,6 +232,12 @@ const MIGRATIONS = [
   "ALTER TABLE users ADD COLUMN totp_pending TEXT DEFAULT ''",
   "ALTER TABLE user_sessions ADD COLUMN user_agent TEXT DEFAULT ''",
   "ALTER TABLE user_sessions ADD COLUMN ip TEXT DEFAULT ''",
+  "ALTER TABLE findings ADD COLUMN cvss4_vector TEXT DEFAULT ''",
+  'ALTER TABLE findings ADD COLUMN cvss4_score REAL DEFAULT 0',
+  "ALTER TABLE findings ADD COLUMN http_request TEXT DEFAULT ''",
+  "ALTER TABLE findings ADD COLUMN http_response TEXT DEFAULT ''",
+  "ALTER TABLE findings ADD COLUMN compliance TEXT DEFAULT ''",
+  "ALTER TABLE projects ADD COLUMN report_layout TEXT DEFAULT 'full'",
 ];
 
 async function initDb() {

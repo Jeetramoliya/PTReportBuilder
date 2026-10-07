@@ -68,6 +68,10 @@ async function loadFinding() {
   document.getElementById('findingTitle').textContent = `${currentFinding.identifier}: ${currentFinding.title}`;
   document.getElementById('findingMeta').textContent = `Severity: ${currentFinding.severity} · Risk Rating: ${currentFinding.risk_rating} · Status: ${currentFinding.status}`;
   fillForm(document.getElementById('findingForm'), currentFinding);
+  // Compliance is stored as a JSON array; show it as a comma-separated list.
+  let tags = [];
+  try { tags = JSON.parse(currentFinding.compliance || '[]'); } catch (e) { tags = []; }
+  document.querySelector('#findingForm [name=compliance_tags]').value = (tags || []).join(', ');
 
   if (currentFinding.cvss_vector) {
     const parsed = parseVector(currentFinding.cvss_vector);
@@ -96,6 +100,7 @@ document.getElementById('findingForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target).entries());
   data.cvss_vector = cvssVector;
+  data.compliance = (data.compliance_tags || '').split(',').map((t) => t.trim()).filter(Boolean);
   try {
     await API.updateFinding(findingId, data);
     toast('Finding saved');

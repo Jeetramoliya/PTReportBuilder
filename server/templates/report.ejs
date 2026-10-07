@@ -414,6 +414,7 @@
     word-break: break-all;
   }
   .payload-label { font-weight: 600; color: var(--color-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .md-code { font-family: Consolas, 'Courier New', monospace; font-size: 11px; background: #1f2933; color: #e6edf3; padding: 10px 12px; border-radius: 4px; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
 </style>
 </head>
 <body>
@@ -661,6 +662,23 @@
   </table>
 </div>
 
+<!-- Compliance Coverage -->
+<% var complianceKeys = Object.keys(complianceCoverage || {}); %>
+<% if (complianceKeys.length) { %>
+<div class="page">
+  <h2 id="compliance-coverage">Compliance Coverage</h2>
+  <p>Findings from this assessment mapped to the relevant compliance controls / requirements.</p>
+  <table>
+    <thead><tr><th style="width:40%;">Control / Requirement</th><th>Related Findings</th></tr></thead>
+    <tbody>
+      <% complianceKeys.sort().forEach(function(ctrl) { %>
+        <tr><td><%= ctrl %></td><td><%= complianceCoverage[ctrl].join(', ') %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
 <!-- Retest Summary -->
 <% if (findingsWithRetests.length) { %>
 <div class="page">
@@ -680,7 +698,8 @@
 </div>
 <% } %>
 
-<!-- Individual Findings -->
+<!-- Individual Findings (skipped in the executive layout, which stays summary-only) -->
+<% if (reportLayout !== 'executive') { %>
 <% findings.forEach(function(f, idx) { %>
 <div class="page" id="finding-<%= idx %>">
   <div class="finding-header sev-<%= f.severity.toLowerCase() %>">
@@ -700,13 +719,19 @@
     </tr>
     <% } %>
     <% if (f.cvss_vector) { %>
-    <tr><td>CVSS Vector</td><td colspan="5"><span class="code"><%= f.cvss_vector %></span></td></tr>
+    <tr><td>CVSS v3.1</td><td colspan="5"><span class="code"><%= f.cvss_vector %></span></td></tr>
+    <% } %>
+    <% if (f.cvss4_vector) { %>
+    <tr><td>CVSS v4.0</td><td colspan="3"><span class="code"><%= f.cvss4_vector %></span></td><td>Score</td><td><%= f.cvss4_score ? f.cvss4_score.toFixed(1) : '—' %></td></tr>
+    <% } %>
+    <% if (f.compliance_tags && f.compliance_tags.length) { %>
+    <tr><td>Compliance</td><td colspan="5"><% f.compliance_tags.forEach(function(t){ %><span class="badge badge-outline" style="margin:0 4px 2px 0;"><%= t %></span><% }) %></td></tr>
     <% } %>
     <tr><td>Status</td><td colspan="5"><%= f.status %></td></tr>
   </table>
 
   <h3>Description</h3>
-  <p><%- nl2br(f.description || 'No description provided.') %></p>
+  <div><%- md(f.description || 'No description provided.') %></div>
 
   <h3>Vulnerable Endpoint(s)</h3>
   <% if (f.affected_urls.length) { %>
@@ -737,8 +762,20 @@
     <p class="muted">No reproduction steps recorded.</p>
   <% } %>
 
+  <% if (f.http_request || f.http_response) { %>
+    <h3>Request / Response</h3>
+    <% if (f.http_request) { %>
+      <div class="payload-label">HTTP Request</div>
+      <div class="payload-block"><%= f.http_request %></div>
+    <% } %>
+    <% if (f.http_response) { %>
+      <div class="payload-label">HTTP Response</div>
+      <div class="payload-block"><%= f.http_response %></div>
+    <% } %>
+  <% } %>
+
   <h3>Suggested Remediation</h3>
-  <p><%- nl2br(f.remediation || 'No remediation provided.') %></p>
+  <div><%- md(f.remediation || 'No remediation provided.') %></div>
 
   <% if (f.references.length) { %>
     <h3>References</h3>
@@ -748,6 +785,7 @@
   <% } %>
 </div>
 <% }) %>
+<% } %>
 <% } %>
 
 </body>

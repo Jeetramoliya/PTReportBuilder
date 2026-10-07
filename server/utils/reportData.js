@@ -3,6 +3,7 @@ const { getUpload } = require('../uploads');
 const { severityRank } = require('./riskMatrix');
 const { resolveTheme, resolvePageBackground } = require('./themes');
 const { getFont } = require('./fonts');
+const { markdownToHtml } = require('./markdown');
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,6 +11,10 @@ function escapeHtml(str) {
 
 function nl2br(str) {
   return escapeHtml(str).replace(/\n/g, '<br/>');
+}
+
+function parseCompliance(s) {
+  try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
 }
 
 const WORDMARK_SIZES = { small: 16, medium: 22, large: 30, xlarge: 40 };
@@ -75,11 +80,20 @@ async function buildReportData(projectId, opts = {}) {
     }
     findings.push({
       ...f,
+      compliance_tags: parseCompliance(f.compliance),
       affected_urls: await db.prepare('SELECT * FROM affected_urls WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
       poc_steps,
       references: await db.prepare('SELECT * FROM finding_references WHERE finding_id = ? ORDER BY sort_order, rowid').all(f.id),
       retest_events: await db.prepare('SELECT * FROM retest_events WHERE finding_id = ? ORDER BY event_date, rowid').all(f.id),
     });
+  }
+
+  // Compliance coverage: control label -> finding identifiers that touch it.
+  const complianceCoverage = {};
+  for (const f of findings) {
+    for (const tag of f.compliance_tags) {
+      (complianceCoverage[tag] = complianceCoverage[tag] || []).push(f.identifier);
+    }
   }
 
   const findingsSorted = [...findings].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
@@ -128,6 +142,9 @@ async function buildReportData(projectId, opts = {}) {
     findings: findingsSorted,
     severityCounts,
     owaspCounts,
+    complianceCoverage,
+    reportLayout: project.report_layout || 'full',
+    md: markdownToHtml,
     findingsWithRetests: retestEvents,
     totalFindings: findings.length,
     totalAlerts,
