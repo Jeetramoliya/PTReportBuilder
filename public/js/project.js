@@ -9,6 +9,8 @@ document.getElementById('downloadBtn').href = `/api/projects/${projectId}/report
 document.getElementById('downloadDocxBtn').href = `/api/projects/${projectId}/report/docx`;
 document.getElementById('exportCsvBtn').href = `/api/export/projects/${projectId}/findings.csv`;
 document.getElementById('exportXlsxBtn').href = `/api/export/projects/${projectId}/findings.xlsx`;
+document.getElementById('exportJiraBtn').href = `/api/export/projects/${projectId}/jira.csv`;
+document.getElementById('exportGithubBtn').href = `/api/export/projects/${projectId}/github.md`;
 
 // ---- Export dropdown ----
 const exportMenuBtn = document.getElementById('exportMenuBtn');

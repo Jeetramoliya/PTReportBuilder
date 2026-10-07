@@ -19,4 +19,16 @@ async function sendMail({ to, subject, html }) {
   return { sent: true };
 }
 
-module.exports = { sendMail, mailConfigured };
+// Fire-and-forget welcome email (no-op if email isn't configured).
+async function sendWelcome(email, name) {
+  if (!mailConfigured()) return;
+  try {
+    await sendMail({
+      to: email,
+      subject: 'Welcome to BlackRoot VAPT Report Builder',
+      html: `<p>Hi ${name || 'there'},</p><p>Your account is ready. Sign in to start managing pentest engagements and generating professional reports.</p>`,
+    });
+  } catch (e) { /* ignore */ }
+}
+
+module.exports = { sendMail, mailConfigured, sendWelcome };

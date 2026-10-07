@@ -41,17 +41,27 @@ function renderUsers() {
         : `<button class="btn small secondary" data-action="promote" data-id="${u.id}">Make admin</button>`;
       actions = `${roleBtn} <button class="btn small danger" data-action="remove" data-id="${u.id}" data-email="${escapeHtml(u.email)}">Remove</button>`;
     }
+    const planBadge = u.plan === 'pro' ? '<span class="badge badge-info">Pro</span>' : '<span class="badge badge-outline">Free</span>';
+    const planBtn = `<button class="btn small secondary" data-plan="${u.id}" data-to="${u.plan === 'pro' ? 'free' : 'pro'}" style="margin-left:6px;">${u.plan === 'pro' ? '→ Free' : '→ Pro'}</button>`;
     tr.innerHTML = `
       <td>${escapeHtml(u.email)}</td>
       <td>${escapeHtml(u.name || '—')}</td>
       <td>${joined}</td>
       <td>${u.project_count}</td>
       <td>${u.finding_count}</td>
+      <td style="white-space:nowrap;">${planBadge}${planBtn}</td>
       <td>${role}</td>
       <td style="text-align:right; white-space:nowrap;">${actions}</td>
     `;
     body.appendChild(tr);
   }
+  body.querySelectorAll('[data-plan]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try { await API.adminSetPlan(btn.dataset.plan, btn.dataset.to); toast(`Plan set to ${btn.dataset.to}`); await loadAll(); }
+      catch (e) { toast(e.message, true); btn.disabled = false; }
+    });
+  });
   body.querySelectorAll('[data-action="remove"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (!confirm(`Permanently remove ${btn.dataset.email} and ALL their projects, findings and evidence? This cannot be undone.`)) return;
@@ -86,11 +96,49 @@ async function loadAudit() {
   } catch (e) { /* ignore */ }
 }
 
+let allProjects = [];
+function renderAdminProjects() {
+  const body = document.getElementById('adminProjBody');
+  if (!body) return;
+  const q = (document.getElementById('projSearch').value || '').trim().toLowerCase();
+  const list = allProjects.filter((p) => !q || (p.name || '').toLowerCase().includes(q) || (p.owner_email || '').toLowerCase().includes(q));
+  body.innerHTML = list.map((p) => `
+    <tr>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(p.owner_email || '—')}</td>
+      <td>${p.finding_count}</td>
+      <td>${p.updated_at ? new Date(p.updated_at.replace(' ', 'T') + 'Z').toLocaleDateString() : '—'}</td>
+      <td style="text-align:right;"><a class="btn small secondary" href="/api/admin/projects/${p.id}/report" target="_blank">View report</a></td>
+    </tr>`).join('');
+}
+async function loadAdminProjects() {
+  try { allProjects = await API.adminProjects(); renderAdminProjects(); } catch (e) { /* ignore */ }
+}
+
+async function loadChart() {
+  const el = document.getElementById('chart');
+  if (!el) return;
+  try {
+    const days = await API.adminChart();
+    const max = Math.max(1, ...days.map((d) => Math.max(d.users, d.projects)));
+    el.innerHTML = `
+      <div style="display:flex; align-items:flex-end; gap:3px; height:110px;">
+        ${days.map((d) => `<div data-tip="${d.day}: ${d.users} user(s), ${d.projects} project(s)" style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:2px;">
+          <div style="height:${(d.projects / max) * 95}px; background:var(--accent); border-radius:2px 2px 0 0;"></div>
+          <div style="height:${(d.users / max) * 95}px; background:var(--accent2); border-radius:2px 2px 0 0;"></div>
+        </div>`).join('')}
+      </div>
+      <div class="helptext" style="margin-top:8px;"><span style="color:var(--accent)">&#9632;</span> Projects &nbsp; <span style="color:var(--accent2)">&#9632;</span> Users</div>`;
+  } catch (e) { /* ignore */ }
+}
+
 async function loadAll() {
   await loadStats();
   allUsers = await API.adminUsers();
   renderUsers();
+  loadAdminProjects();
   loadAudit();
+  loadChart();
 }
 
 // Add User modal
@@ -126,5 +174,7 @@ document.getElementById('addUserForm').addEventListener('submit', async (e) => {
 (async () => {
   if (!(await guard())) return;
   document.getElementById('userSearch').addEventListener('input', renderUsers);
+  const ps = document.getElementById('projSearch');
+  if (ps) ps.addEventListener('input', renderAdminProjects);
   await loadAll();
 })();

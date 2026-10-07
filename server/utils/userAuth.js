@@ -44,6 +44,10 @@ async function setAdmin(userId, flag) {
   await db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(flag ? 1 : 0, userId);
 }
 
+async function setPlan(userId, plan) {
+  await db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan === 'pro' ? 'pro' : 'free', userId);
+}
+
 // Creates any admin accounts (ADMIN_EMAILS) that don't exist yet, using ADMIN_PASSWORD.
 // Both env vars must be set; otherwise this is a no-op (admins can just sign up normally).
 async function seedAdmins() {
@@ -150,6 +154,7 @@ module.exports = {
   getUserById,
   updatePassword,
   setAdmin,
+  setPlan,
   seedAdmins,
   listSessions,
   revokeSession,

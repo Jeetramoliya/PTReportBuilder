@@ -62,6 +62,56 @@ router.get('/projects/:id/findings.csv', async (req, res, next) => {
   }
 });
 
+const JIRA_PRIORITY = { Critical: 'Highest', High: 'High', Medium: 'Medium', Low: 'Low', Info: 'Lowest', None: 'Lowest' };
+
+// Jira CSV import format (Summary, Issue Type, Priority, Description, Labels).
+router.get('/projects/:id/jira.csv', async (req, res, next) => {
+  try {
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
+    if (!data) return res.status(404).json({ error: 'Project not found' });
+    const header = ['Summary', 'Issue Type', 'Priority', 'Description', 'Labels'];
+    const rows = [header];
+    for (const f of data.findings) {
+      const desc = [
+        f.description || '',
+        f.remediation ? `\n\nRemediation:\n${f.remediation}` : '',
+        f.affected_urls.length ? `\n\nAffected:\n${f.affected_urls.map((u) => u.url).join('\n')}` : '',
+        f.cvss_vector ? `\n\nCVSS: ${f.cvss_score} (${f.cvss_vector})` : '',
+      ].join('');
+      const labels = [f.owasp_category ? f.owasp_category.split('-')[0] : '', f.cwe_id, ...(f.compliance_tags || [])].filter(Boolean).join(' ').replace(/\s+/g, '-');
+      rows.push([`${f.identifier}: ${f.title}`, 'Bug', JIRA_PRIORITY[f.severity] || 'Medium', desc, labels]);
+    }
+    const csv = rows.map((r) => r.map(csvEscape).join(',')).join('\r\n');
+    const filename = `${(data.project.name || 'findings').replace(/[^a-z0-9\-_]+/gi, '_')}_jira.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('﻿' + csv);
+  } catch (e) { next(e); }
+});
+
+// GitHub-flavoured Markdown: one issue block per finding, ready to paste.
+router.get('/projects/:id/github.md', async (req, res, next) => {
+  try {
+    if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });
+    const data = await buildReportData(req.params.id);
+    if (!data) return res.status(404).json({ error: 'Project not found' });
+    const md = data.findings.map((f) => {
+      const lines = [`## ${f.identifier}: ${f.title}`, '', `**Severity:** ${f.severity} · **Risk:** ${f.risk_rating}${f.cvss_score ? ` · **CVSS:** ${f.cvss_score}` : ''}`, ''];
+      if (f.owasp_category || f.cwe_id) lines.push(`**OWASP:** ${f.owasp_category || '—'} · **CWE:** ${f.cwe_id || '—'}`, '');
+      lines.push('### Description', f.description || '_None_', '');
+      if (f.affected_urls.length) lines.push('### Affected', ...f.affected_urls.map((u) => `- \`${u.url}\``), '');
+      lines.push('### Remediation', f.remediation || '_None_', '');
+      if (f.compliance_tags && f.compliance_tags.length) lines.push(`**Compliance:** ${f.compliance_tags.join(', ')}`, '');
+      return lines.join('\n');
+    }).join('\n\n---\n\n');
+    const filename = `${(data.project.name || 'findings').replace(/[^a-z0-9\-_]+/gi, '_')}_github.md`;
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(`# ${data.project.name} — Findings\n\n${md}\n`);
+  } catch (e) { next(e); }
+});
+
 router.get('/projects/:id/findings.xlsx', async (req, res, next) => {
   try {
     if (!(await ownsProject(req.params.id, req.userId))) return res.status(404).json({ error: 'Project not found' });

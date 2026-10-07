@@ -1,12 +1,16 @@
 const express = require('express');
+const path = require('path');
+const ejs = require('ejs');
 const db = require('../db');
 const auth = require('../utils/userAuth');
 const requireAdmin = require('../middleware/requireAdmin');
 const { deleteUserCascade } = require('../utils/cascade');
 const { isEnvAdmin } = require('../utils/admin');
 const { logAudit, recentAudit } = require('../utils/audit');
+const { buildReportData } = require('../utils/reportData');
 
 const router = express.Router();
+const templatePath = path.join(__dirname, '..', 'templates', 'report.ejs');
 router.use(requireAdmin);
 
 // Recent admin/security actions.
@@ -30,16 +34,68 @@ router.get('/stats', async (req, res, next) => {
 router.get('/users', async (req, res, next) => {
   try {
     const rows = await db.prepare(
-      `SELECT u.id, u.email, u.name, u.is_admin, u.created_at,
+      `SELECT u.id, u.email, u.name, u.is_admin, u.plan, u.created_at,
          (SELECT COUNT(*) FROM projects p WHERE p.user_id = u.id) AS project_count,
          (SELECT COUNT(*) FROM findings f JOIN projects p ON p.id = f.project_id WHERE p.user_id = u.id) AS finding_count
        FROM users u ORDER BY u.created_at DESC`
     ).all();
     res.json(rows.map((r) => ({
       ...r,
+      plan: r.plan || 'free',
       is_env_admin: isEnvAdmin(r.email),            // owner account — can't be changed/removed
       is_admin: Number(r.is_admin) === 1 || isEnvAdmin(r.email),
     })));
+  } catch (e) { next(e); }
+});
+
+// Set a user's plan (free/pro).
+router.patch('/users/:id/plan', async (req, res, next) => {
+  try {
+    const plan = req.body.plan === 'pro' ? 'pro' : 'free';
+    const target = await db.prepare('SELECT id, email FROM users WHERE id = ?').get(req.params.id);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    await auth.setPlan(target.id, plan);
+    logAudit(req.user, 'user.plan', `${target.email} -> ${plan}`);
+    res.json({ ok: true, plan });
+  } catch (e) { next(e); }
+});
+
+// All projects across users (oversight).
+router.get('/projects', async (req, res, next) => {
+  try {
+    const rows = await db.prepare(
+      `SELECT p.id, p.name, p.client_name, p.updated_at, u.email AS owner_email,
+         (SELECT COUNT(*) FROM findings f WHERE f.project_id = p.id) AS finding_count
+       FROM projects p LEFT JOIN users u ON u.id = p.user_id ORDER BY p.updated_at DESC`
+    ).all();
+    res.json(rows);
+  } catch (e) { next(e); }
+});
+
+// View any project's report (read-only, images inlined). Oversight / support.
+router.get('/projects/:id/report', async (req, res, next) => {
+  try {
+    const data = await buildReportData(req.params.id, { inline: true });
+    if (!data) return res.status(404).send('Project not found');
+    logAudit(req.user, 'report.view', `${data.project.name} (${data.project.id})`);
+    res.send(await ejs.renderFile(templatePath, data));
+  } catch (e) { next(e); }
+});
+
+// Signups + new projects per day for the last 30 days.
+router.get('/chart', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+    const users = await db.prepare("SELECT substr(created_at,1,10) AS day, COUNT(*) AS c FROM users WHERE substr(created_at,1,10) >= ? GROUP BY day").all(since);
+    const projects = await db.prepare("SELECT substr(created_at,1,10) AS day, COUNT(*) AS c FROM projects WHERE substr(created_at,1,10) >= ? GROUP BY day").all(since);
+    const toMap = (rows) => Object.fromEntries(rows.map((r) => [r.day, r.c]));
+    const uMap = toMap(users); const pMap = toMap(projects);
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      days.push({ day: d, users: uMap[d] || 0, projects: pMap[d] || 0 });
+    }
+    res.json(days);
   } catch (e) { next(e); }
 });
 

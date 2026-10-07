@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const auth = require('../utils/userAuth');
 const db = require('../db');
 const { deleteUserCascade } = require('../utils/cascade');
-const { sendMail, mailConfigured } = require('../utils/email');
+const { sendMail, mailConfigured, sendWelcome } = require('../utils/email');
 const { isAdminUser } = require('../utils/admin');
 const totp = require('../utils/totp');
 const { logAudit } = require('../utils/audit');
@@ -44,6 +44,7 @@ router.post('/signup', signupLimiter, async (req, res, next) => {
     if (await auth.findUserByEmail(email)) return res.status(409).json({ error: 'An account with that email already exists' });
 
     const user = await auth.createUser(email, name, password);
+    sendWelcome(email, name); // fire-and-forget
     const token = await auth.createSession(user.id, sessionMeta(req));
     auth.setSessionCookie(res, token);
     res.status(201).json({ user });

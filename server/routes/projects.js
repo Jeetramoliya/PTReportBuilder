@@ -10,6 +10,8 @@ const { FONTS } = require('../utils/fonts');
 const { extractDominantColor } = require('../utils/logoColor');
 const { deleteProjectCascade, cloneProject } = require('../utils/cascade');
 const { coerceProjectField, SKIP, clampStr } = require('../utils/validate');
+const { isAdminUser } = require('../utils/admin');
+const { projectLimit } = require('../utils/plans');
 
 const router = express.Router();
 
@@ -69,6 +71,15 @@ router.post('/', async (req, res, next) => {
     const { client_name, client_address, client_website, report_title, report_subtitle, iteration_label, assessment_date, tester_name, prepared_by_org, tagline, finding_prefix, theme, cover_style } = req.body;
     const name = clampStr(req.body.name, 300).trim();
     if (!name) return res.status(400).json({ error: 'Project name is required' });
+
+    // Plan limit (free accounts are capped; pro/admin unlimited).
+    const limit = projectLimit(req.user, isAdminUser(req.user));
+    if (Number.isFinite(limit)) {
+      const count = (await db.prepare('SELECT COUNT(*) AS c FROM projects WHERE user_id = ?').get(req.userId)).c;
+      if (count >= limit) {
+        return res.status(403).json({ error: `Your plan is limited to ${limit} projects. Ask an admin to upgrade you to Pro for unlimited projects.` });
+      }
+    }
     const id = nanoid();
     const defaultMethodology = `Security team tested the application in the role of an authenticated user. Application security tests are modeled along the methodologies specified by the Open Web Application Security Project (OWASP), covering:
 - Complete review of application architecture and inadequate input sanitization
