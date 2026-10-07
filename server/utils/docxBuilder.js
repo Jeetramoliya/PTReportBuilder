@@ -240,8 +240,8 @@ function buildDocx(data) {
     children.push(new Paragraph({ children: [new PageBreak()] }));
   }
 
-  // ---- Individual Findings ----
-  findings.forEach((f, idx) => {
+  // ---- Individual Findings (skipped in the executive layout) ----
+  if (data.reportLayout !== 'executive') findings.forEach((f, idx) => {
     children.push(heading(`5.${idx + 1} ${f.identifier}: ${f.title}`, HeadingLevel.HEADING_1, brand));
 
     const infoRows = [
@@ -252,7 +252,9 @@ function buildDocx(data) {
     if (f.owasp_category || f.cwe_id) {
       infoRows.push(new TableRow({ children: [cell('OWASP', { bold: true }), cell(f.owasp_category || '—'), cell('CWE', { bold: true }), cell(f.cwe_id || '—', { colSpan: 3 })] }));
     }
-    if (f.cvss_vector) infoRows.push(new TableRow({ children: [cell('CVSS Vector', { bold: true }), cell(f.cvss_vector, { colSpan: 5 })] }));
+    if (f.cvss_vector) infoRows.push(new TableRow({ children: [cell('CVSS v3.1', { bold: true }), cell(f.cvss_vector, { colSpan: 5 })] }));
+    if (f.cvss4_vector) infoRows.push(new TableRow({ children: [cell('CVSS v4.0', { bold: true }), cell(f.cvss4_vector, { colSpan: 3 }), cell('Score', { bold: true }), cell(f.cvss4_score ? f.cvss4_score.toFixed(1) : '—')] }));
+    if (f.compliance_tags && f.compliance_tags.length) infoRows.push(new TableRow({ children: [cell('Compliance', { bold: true }), cell(f.compliance_tags.join(', '), { colSpan: 5 })] }));
     infoRows.push(new TableRow({ children: [cell('Status', { bold: true }), cell(f.status, { colSpan: 5 })] }));
     children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: infoRows }));
     children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
@@ -285,6 +287,20 @@ function buildDocx(data) {
       });
     } else {
       children.push(...para('No reproduction steps recorded.', { italic: true, color: '5B6773' }));
+    }
+
+    if (f.http_request || f.http_response) {
+      children.push(heading('Request / Response', HeadingLevel.HEADING_2, brand));
+      const codeBlock = (label, text) => {
+        children.push(new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: label, bold: true, color: '5B6773', size: 18 })] }));
+        children.push(new Paragraph({
+          shading: { fill: '1F2933', type: ShadingType.CLEAR, color: 'auto' },
+          spacing: { after: 120 },
+          children: [new TextRun({ text, color: 'E6EDF3', font: 'Consolas' })],
+        }));
+      };
+      if (f.http_request) codeBlock('HTTP Request', f.http_request);
+      if (f.http_response) codeBlock('HTTP Response', f.http_response);
     }
 
     children.push(heading('Suggested Remediation', HeadingLevel.HEADING_2, brand));

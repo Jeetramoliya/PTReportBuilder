@@ -1,3 +1,4 @@
+require('dotenv').config(); // load .env (local dev); on hosts, use real env vars
 const express = require('express');
 const path = require('path');
 const db = require('./db');
